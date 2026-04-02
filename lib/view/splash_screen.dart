@@ -207,7 +207,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    "Pure Organic Agriculture",
+                                    "Har Kisan ka Sathi",
                                     style: TextStyle(
                                       color: Colors.white.withOpacity(0.7),
                                       fontSize: 16,

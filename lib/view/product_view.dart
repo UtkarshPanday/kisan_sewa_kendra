@@ -39,6 +39,10 @@ class _ProductViewState extends State<ProductView>
   late TabController _tabController;
   bool _isExpanded = false;
 
+  // Review states
+  double _userRating = 0;
+  final TextEditingController _reviewController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -72,6 +76,7 @@ class _ProductViewState extends State<ProductView>
   @override
   void dispose() {
     _tabController.dispose();
+    _reviewController.dispose();
     super.dispose();
   }
 
@@ -138,7 +143,7 @@ class _ProductViewState extends State<ProductView>
           ),
         const SizedBox(width: 6),
         Text(
-          rating.toString(),
+          rating.toStringAsFixed(1),
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
@@ -379,6 +384,11 @@ class _ProductViewState extends State<ProductView>
             // --- How to Use ---
             _buildHowToUseSection(),
 
+            const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0)),
+
+            // --- Write a Review ---
+            _buildWriteReviewSection(),
+
             // --- Similar Products ---
             if (_recommend.isNotEmpty) ...[
               const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0)),
@@ -406,7 +416,7 @@ class _ProductViewState extends State<ProductView>
                 ),
               ),
             ],
-            const SizedBox(height: 120),
+            const SizedBox(height: 140),
           ],
         ),
       ),
@@ -699,6 +709,112 @@ class _ProductViewState extends State<ProductView>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildWriteReviewSection() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Write a Review",
+            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Colors.black),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Share your experience with this product",
+            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 20),
+          
+          // Star Rating Input
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (index) {
+              return GestureDetector(
+                onTap: () => setState(() => _userRating = index + 1.0),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Icon(
+                    index < _userRating ? Icons.star_rounded : Icons.star_outline_rounded,
+                    color: Colors.amber,
+                    size: 40,
+                  ),
+                ),
+              );
+            }),
+          ),
+          
+          const SizedBox(height: 20),
+          
+          // Review Text Field
+          TextField(
+            controller: _reviewController,
+            maxLines: 4,
+            decoration: InputDecoration(
+              hintText: "Describe your experience...",
+              hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+              filled: true,
+              fillColor: const Color(0xFFF9F9F9),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFF0F0F0)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFF0F0F0)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Constants.baseColor.withOpacity(0.5)),
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: () {
+                if (_userRating == 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Please select a rating")),
+                  );
+                  return;
+                }
+                
+                // Show success feedback
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text("Review submitted successfully!"),
+                    backgroundColor: Constants.baseColor,
+                  ),
+                );
+                
+                // Clear fields
+                setState(() {
+                  _userRating = 0;
+                  _reviewController.clear();
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Constants.baseColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              child: const Text(
+                "SUBMIT REVIEW",
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 1),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
