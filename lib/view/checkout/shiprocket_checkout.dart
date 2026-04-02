@@ -9,21 +9,58 @@ class ShiprocketCheckout extends StatefulWidget {
   final List<Map<String, dynamic>> cartItems;
   final double? totalValue;
 
-  const ShiprocketCheckout({super.key, required this.cartItems, this.totalValue});
+  const ShiprocketCheckout(
+      {super.key, required this.cartItems, this.totalValue});
 
   @override
   State<ShiprocketCheckout> createState() => _ShiprocketCheckoutState();
 }
 
-class _ShiprocketCheckoutState extends State<ShiprocketCheckout> {
+class _ShiprocketCheckoutState extends State<ShiprocketCheckout>
+    with WidgetsBindingObserver {
   late final WebViewController _controller;
   bool _isLoading = true;
   bool _isSuccessLogged = false;
+  bool _isRedirecting = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initWebView();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _isRedirecting) {
+      if (mounted) {
+        debugPrint("Returning from payment intent. Popping checkout screen.");
+        Navigator.pop(context);
+      }
+    }
+  }
+
+  void _showInstallMessage(String url) {
+    String appName = "this UPI app";
+    if (url.contains("paytm")) appName = "Paytm";
+    if (url.contains("phonepe")) appName = "PhonePe";
+    if (url.contains("tez") || url.contains("gpay")) appName = "Google Pay";
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Please first download $appName to continue."),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _initWebView() {
@@ -79,90 +116,98 @@ class _ShiprocketCheckoutState extends State<ShiprocketCheckout> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) {
-            setState(() => _isLoading = true);
+            if (mounted) setState(() => _isLoading = true);
           },
           onPageFinished: (_) {
-            setState(() => _isLoading = false);
+            if (mounted) setState(() => _isLoading = false);
           },
-
-          // ✅ FINAL PURCHASE FIX
           onNavigationRequest: (NavigationRequest request) async {
             final url = request.url;
+            debugPrint("👉 Shiprocket Navigation Request: $url");
 
-            debugPrint("👉 URL: $url");
-
-            // 🔥 CORRECT PURCHASE DETECTION
-            if (!_isSuccessLogged && url.contains("/orders/")) {
-
-              debugPrint("✅ PAYMENT SUCCESS DETECTED");
-
+            if (!_isSuccessLogged &&
+                (url.contains("/orders/") ||
+                    url.contains("order-success") ||
+                    url.contains("thank-you"))) {
               _isSuccessLogged = true;
-
               double val = widget.totalValue ?? 0.0;
-
               String txId = Uri.tryParse(url)?.pathSegments.last ??
                   DateTime.now().millisecondsSinceEpoch.toString();
-
-              debugPrint("💰 Purchase Value: $val");
-              debugPrint("🧾 Transaction ID: $txId");
-
-              // Meta Event - FIXED: Using named parameter
               MetaEvents.purchase(totalValue: val);
-
-              // Firebase Event - Already using named parameters
               FirebaseEvents.trackPurchase(
                 totalAmount: val,
                 transactionId: txId,
                 productList: widget.cartItems,
               );
 
-              debugPrint("🔥 FIREBASE PURCHASE EVENT SENT");
+              if (mounted) Navigator.pop(context);
+              return NavigationDecision.prevent;
             }
 
-            try {
-              // intent://
-              if (url.startsWith("intent://")) {
+            // Handle custom schemes for UPI/External Apps
+            if (!url.toLowerCase().startsWith("http")) {
+              try {
                 final uri = Uri.parse(url);
-
-                try {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                } catch (e) {
-                  final fallback = uri.queryParameters['browser_fallback_url'];
-                  if (fallback != null) {
-                    await launchUrl(Uri.parse(fallback));
-                  }
-                }
-
-                return NavigationDecision.prevent;
-              }
-
-              // UPI apps
-              if (url.startsWith("upi://") ||
-                  url.startsWith("phonepe://") ||
-                  url.startsWith("paytm://") ||
-                  url.startsWith("tez://") ||
-                  url.startsWith("gpay://")) {
-
-                final uri = Uri.parse(url);
-
                 if (await canLaunchUrl(uri)) {
+                  if (mounted) {
+                    setState(() {
+                      _isRedirecting = true;
+                      _isLoading = false;
+                    });
+                  }
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } else {
+                  _showInstallMessage(url);
                 }
-
-                return NavigationDecision.prevent;
+              } catch (e) {
+                debugPrint("Error launching external app: $e");
               }
-
-              // Truecaller
-              if (url.startsWith("truecallersdk://")) {
-                await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                return NavigationDecision.prevent;
-              }
-
-            } catch (e) {
-              debugPrint("🔥 Error: $e");
+              return NavigationDecision.prevent;
             }
 
             return NavigationDecision.navigate;
+          },
+          onWebResourceError: (WebResourceError error) async {
+            debugPrint(
+                "Web Resource Error: ${error.errorCode}, ${error.description}, ${error.url}");
+
+            final url = error.url ?? "";
+            if (!url.toLowerCase().startsWith("http") && url.isNotEmpty) {
+              try {
+                final uri = Uri.parse(url);
+                if (await canLaunchUrl(uri)) {
+                  if (mounted) {
+                    setState(() {
+                      _isRedirecting = true;
+                      _isLoading = false;
+                    });
+                  }
+
+                  // Hide the error screen by loading a clean blank page/loader
+                  _controller.loadHtmlString("""
+                    <!DOCTYPE html><html><body style='display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;'>
+                      <h3 style='color:#26842c'>Redirecting to payment app...</h3>
+                    </body></html>
+                  """);
+
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } else {
+                  _showInstallMessage(url);
+                  // Reload the previous page to clear the error since we can't launch the app
+                  _controller.goBack();
+                }
+              } catch (e) {
+                debugPrint("Failed to launch scheme from error handler: $e");
+              }
+            }
+          },
+          onUrlChange: (UrlChange change) {
+            debugPrint("URL Changed to: ${change.url}");
+            if (change.url != null &&
+                (change.url!.contains("cancel") ||
+                    change.url!.contains("checkout/cart"))) {
+              if (mounted) Navigator.pop(context);
+            }
           },
         ),
       )
@@ -181,10 +226,9 @@ class _ShiprocketCheckoutState extends State<ShiprocketCheckout> {
       body: Stack(
         children: [
           WebViewWidget(controller: _controller),
-
-          if (_isLoading)
+          if (_isLoading && !_isRedirecting)
             const Center(
-              child: CircularProgressIndicator(),
+              child: CircularProgressIndicator(color: Color(0xff26842c)),
             ),
         ],
       ),

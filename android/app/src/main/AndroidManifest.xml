@@ -24,6 +24,10 @@
         <!-- Paytm -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="paytmmp" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
             <data android:scheme="paytm" />
         </intent>
 
@@ -31,6 +35,10 @@
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="tez" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="gpay" />
         </intent>
 
         <!-- Generic Intent -->
