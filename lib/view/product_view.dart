@@ -42,6 +42,20 @@ class _ProductViewState extends State<ProductView>
   // Review states
   double _userRating = 0;
   final TextEditingController _reviewController = TextEditingController();
+  final List<Map<String, dynamic>> _reviews = [
+    {
+      "name": "Rahul Sharma",
+      "rating": 5.0,
+      "comment": "Very effective product. I saw results in just 1 week. Highly recommended!",
+      "date": "2 days ago"
+    },
+    {
+      "name": "Amit Patel",
+      "rating": 4.0,
+      "comment": "Good quality and original product. Packaging was also very good.",
+      "date": "5 days ago"
+    }
+  ];
 
   @override
   void initState() {
@@ -127,11 +141,12 @@ class _ProductViewState extends State<ProductView>
     return const SizedBox.shrink();
   }
 
-  Widget _buildRatingStars(double rating) {
+  Widget _buildRatingStars(double rating, {double size = 16}) {
     int fullStars = rating.floor();
     bool hasHalfStar = (rating - fullStars) >= 0.5;
 
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         for (int i = 0; i < 5; i++)
           Icon(
@@ -139,13 +154,13 @@ class _ProductViewState extends State<ProductView>
                 ? Icons.star_rounded
                 : (i == fullStars && hasHalfStar ? Icons.star_half_rounded : Icons.star_outline_rounded),
             color: Colors.amber,
-            size: 16,
+            size: size,
           ),
         const SizedBox(width: 6),
         Text(
           rating.toStringAsFixed(1),
-          style: const TextStyle(
-            fontSize: 14,
+          style: TextStyle(
+            fontSize: size * 0.87,
             fontWeight: FontWeight.bold,
             color: Colors.black54,
           ),
@@ -388,6 +403,9 @@ class _ProductViewState extends State<ProductView>
 
             // --- Write a Review ---
             _buildWriteReviewSection(),
+            
+            // --- Customer Reviews ---
+            _buildReviewsListSection(),
 
             // --- Similar Products ---
             if (_recommend.isNotEmpty) ...[
@@ -416,7 +434,7 @@ class _ProductViewState extends State<ProductView>
                 ),
               ),
             ],
-            const SizedBox(height: 140),
+            const SizedBox(height: 180), // Increased bottom spacing
           ],
         ),
       ),
@@ -467,9 +485,16 @@ class _ProductViewState extends State<ProductView>
                     backgroundColor: const Color(0xFFF7941D),
                     foregroundColor: Colors.white,
                     elevation: 0,
+                    padding: EdgeInsets.zero, // Prevent text overflow
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text("Add to Cart", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                  child: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text("Add to Cart", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -509,9 +534,16 @@ class _ProductViewState extends State<ProductView>
                     backgroundColor: Constants.baseColor,
                     foregroundColor: Colors.white,
                     elevation: 0,
+                    padding: EdgeInsets.zero, // Prevent text overflow
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text("Buy Now", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                  child: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text("Buy Now", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -564,6 +596,13 @@ class _ProductViewState extends State<ProductView>
   }
 
   Widget _buildDescriptionContent() {
+    if (widget.product.body.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(40),
+        child: Center(child: Text("No description available.", style: TextStyle(color: Colors.grey))),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -577,16 +616,14 @@ class _ProductViewState extends State<ProductView>
             curve: Curves.easeInOut,
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: _isExpanded ? const BoxConstraints() : const BoxConstraints(maxHeight: 160),
+              constraints: _isExpanded ? const BoxConstraints() : const BoxConstraints(maxHeight: 250), // Increased default height
               child: ClipRect(
                 child: Stack(
                   children: [
-                    SingleChildScrollView(
-                      physics: const NeverScrollableScrollPhysics(),
-                      child: HtmlWidget(
-                        widget.product.body,
-                        textStyle: const TextStyle(fontSize: 14, color: Color(0xFF666666), height: 1.7),
-                      ),
+                    HtmlWidget(
+                      widget.product.body,
+                      textStyle: const TextStyle(fontSize: 14, color: Color(0xFF666666), height: 1.7),
+                      // Add a factory for better handling if needed, but default should work
                     ),
                     if (!_isExpanded)
                       Positioned(
@@ -594,14 +631,14 @@ class _ProductViewState extends State<ProductView>
                         left: 0,
                         right: 0,
                         child: Container(
-                          height: 80,
+                          height: 100,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
                                 Colors.white.withOpacity(0),
-                                Colors.white.withOpacity(0.8),
+                                Colors.white.withOpacity(0.9),
                                 Colors.white,
                               ],
                             ),
@@ -787,19 +824,34 @@ class _ProductViewState extends State<ProductView>
                   return;
                 }
                 
+                if (_reviewController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Please write a review message")),
+                  );
+                  return;
+                }
+                
+                // Add review to local list
+                setState(() {
+                  _reviews.insert(0, {
+                    "name": "You",
+                    "rating": _userRating,
+                    "comment": _reviewController.text.trim(),
+                    "date": "Just now"
+                  });
+                  _userRating = 0;
+                  _reviewController.clear();
+                  FocusScope.of(context).unfocus();
+                });
+
                 // Show success feedback
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: const Text("Review submitted successfully!"),
                     backgroundColor: Constants.baseColor,
+                    behavior: SnackBarBehavior.floating,
                   ),
                 );
-                
-                // Clear fields
-                setState(() {
-                  _userRating = 0;
-                  _reviewController.clear();
-                });
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Constants.baseColor,
@@ -815,6 +867,66 @@ class _ProductViewState extends State<ProductView>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildReviewsListSection() {
+    if (_reviews.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Text(
+            "Customer Reviews",
+            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Colors.black),
+          ),
+        ),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          itemCount: _reviews.length,
+          itemBuilder: (context, index) {
+            final review = _reviews[index];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFF0F0F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        review['name'],
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      Text(
+                        review['date'],
+                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  _buildRatingStars(review['rating'], size: 14),
+                  const SizedBox(height: 8),
+                  Text(
+                    review['comment'],
+                    style: const TextStyle(color: Colors.black87, fontSize: 13, height: 1.4),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

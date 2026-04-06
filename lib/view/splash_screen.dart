@@ -162,6 +162,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     builder: (context, child) {
                       return Column(
                         mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Transform.translate(
                             offset: Offset(0, _floatingAnimation.value),
@@ -182,14 +183,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                   ),
                                   child: Image.asset(
                                     'assets/logo_splash.png',
-                                    width: size.width * 0.5,
+                                    width: size.width * 0.45,
                                     fit: BoxFit.contain,
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 40),
+                          const SizedBox(height: 48),
                           SlideTransition(
                             position: _textSlideAnimation,
                             child: Opacity(
@@ -198,21 +199,23 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                 children: [
                                   const Text(
                                     "Krishi Bhandar",
+                                    textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 36,
+                                      fontSize: 34,
                                       fontWeight: FontWeight.bold,
-                                      letterSpacing: 1.5,
+                                      letterSpacing: 1.2,
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 12),
                                   Text(
-                                    "Har Kisan ka Sathi",
+                                    "हर किसान की पहचान !",
+                                    textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.7),
+                                      color: Colors.white.withOpacity(0.85),
                                       fontSize: 16,
-                                      fontWeight: FontWeight.w400,
-                                      letterSpacing: 1.2,
+                                      fontWeight: FontWeight.w500,
+                                      letterSpacing: 1.5,
                                     ),
                                   ),
                                 ],
