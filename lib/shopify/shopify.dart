@@ -14,9 +14,9 @@ import '../model/product_model.dart';
 class ShopifyAPI {
   static const String _baseUrl =
       "https://3b7f20-3.myshopify.com/admin/api/2024-10";
-  static const Map<String, String> _header = {
+  static Map<String, String> _header = {
     'content-type': 'application/json',
-    'X-Shopify-Access-Token': "0f2704c8755ce49eabb37ded62cd447b",
+    'X-Shopify-Access-Token': Constants.shopifyAccessToken,
   };
 
   static Future<Map<String, dynamic>> _getData({
@@ -61,9 +61,9 @@ class Shopify {
   static const String _proIdPre = "gid://shopify/Product/";
   static const String _proVarIdPre = "gid://shopify/ProductVariant/";
 
-  static const Map<String, String> _header = {
+  static Map<String, String> _header = {
     'content-type': 'application/json',
-    'X-Shopify-Storefront-Access-Token': "0f2704c8755ce49eabb37ded62cd447b",
+    'X-Shopify-Storefront-Access-Token': Constants.storefrontAccessToken,
   };
 
   static Future<Map<String, dynamic>> _getData(BuildContext? context,
@@ -680,9 +680,9 @@ class ShopifyAdmin {
   static const String _proIdPre = "gid://shopify/Product/";
   static const String _proVarIdPre = "gid://shopify/ProductVariant/";
 
-  static const Map<String, String> _header = {
+  static Map<String, String> _header = {
     'content-type': 'application/json',
-    'X-Shopify-Access-Token': "0f2704c8755ce49eabb37ded62cd447b",
+    'X-Shopify-Access-Token': Constants.shopifyAccessToken,
   };
 
   static Future<Map<String, dynamic>> _getData({
@@ -770,6 +770,169 @@ class ShopifyAdmin {
       }
     } catch (e) {
       debugPrint("Error in getProductsByVariant: $e");
+    }
+    return null;
+  }
+
+  static Future<List<Map<String, dynamic>>> getAvailableDiscounts() async {
+    try {
+      const String query = '''
+        query {
+          codeDiscountNodes(first: 10, query: "status:active") {
+            edges {
+              node {
+                codeDiscount {
+                  ... on DiscountCodeBasic {
+                    title
+                    summary
+                    status
+                    codes(first: 1) {
+                      edges {
+                        node {
+                          code
+                        }
+                      }
+                    }
+                    customerGets {
+                      value {
+                        ... on DiscountAmount {
+                          amount {
+                            amount
+                          }
+                        }
+                        ... on DiscountPercentage {
+                          percentage
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ''';
+
+      var res = await http.post(
+        Uri.parse(_baseUrl),
+        body: json.encode({'query': query}),
+        headers: _header,
+      );
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        List<Map<String, dynamic>> discounts = [];
+        
+        if (data['data'] != null && data['data']['codeDiscountNodes'] != null) {
+          final nodes = data['data']['codeDiscountNodes']['edges'] as List;
+          
+          for (var edge in nodes) {
+            final node = edge['node']['codeDiscount'];
+            if (node == null || node.isEmpty) continue;
+            
+            final codesList = node['codes']['edges'] as List?;
+            if (codesList == null || codesList.isEmpty) continue;
+            
+            final codeNode = codesList.first['node'];
+            if (codeNode == null) continue;
+
+            final valObj = node['customerGets']?['value'];
+            double value = 0;
+            String type = 'fixed_amount';
+
+            if (valObj != null) {
+               if (valObj['amount'] != null) {
+                  value = double.tryParse(valObj['amount']['amount'].toString()) ?? 0;
+                  type = 'fixed_amount';
+               } else if (valObj['percentage'] != null) {
+                  value = (double.tryParse(valObj['percentage'].toString()) ?? 0) * 100;
+                  type = 'percentage';
+               }
+            }
+
+            discounts.add({
+              'code': codeNode['code'],
+              'title': node['title'],
+              'summary': node['summary'] ?? '',
+              'value': value,
+              'type': type,
+              'description': node['summary'] ?? node['title'],
+            });
+          }
+        }
+        return discounts;
+      }
+    } catch (e) {
+      debugPrint("Get Discounts Error: $e");
+    }
+    return [];
+  }
+
+  static Future<Map<String, dynamic>?> validateDiscountCode({required String code}) async {
+    try {
+      String query = '''
+        query {
+          codeDiscountNodeByCode(code: "$code") {
+            id
+            codeDiscount {
+              ... on DiscountCodeBasic {
+                title
+                status
+                summary
+                customerGets {
+                  value {
+                    ... on DiscountAmount {
+                      amount {
+                        amount
+                      }
+                    }
+                    ... on DiscountPercentage {
+                      percentage
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ''';
+      
+      var res = await http.post(
+        Uri.parse(_baseUrl),
+        body: json.encode({'query': query}),
+        headers: _header,
+      );
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['data'] != null && data['data']['codeDiscountNodeByCode'] != null) {
+          final discount = data['data']['codeDiscountNodeByCode']['codeDiscount'];
+          
+          if (discount['status'] != 'ACTIVE') return null;
+
+          final valObj = discount['customerGets']['value'];
+          double value = 0;
+          String type = 'fixed_amount';
+
+          if (valObj['amount'] != null) {
+            value = double.tryParse(valObj['amount']['amount'].toString()) ?? 0;
+            type = 'fixed_amount';
+          } else if (valObj['percentage'] != null) {
+            value = (double.tryParse(valObj['percentage'].toString()) ?? 0) * 100;
+            type = 'percentage';
+          }
+
+          return {
+            'code': code,
+            'title': discount['title'],
+            'value': value,
+            'type': type,
+            'summary': discount['summary']
+          };
+        }
+      }
+    } catch (e) {
+      debugPrint("Validate Discount Error: $e");
     }
     return null;
   }

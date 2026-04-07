@@ -2,7 +2,7 @@ import 'package:carousel_slider_plus/carousel_slider_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:kisan_sewa_kendra/components/products_grid.dart';
-import 'package:kisan_sewa_kendra/view/checkout/shiprocket_checkout.dart';
+import 'package:kisan_sewa_kendra/view/checkout/address_view.dart';
 
 import '../components/ksk_appbar.dart';
 import '../components/network_image.dart';
@@ -528,7 +528,7 @@ class _ProductViewState extends State<ProductView>
                       "image": widget.product.image
                     }];
 
-                    Routers.goTO(context, toBody: ShiprocketCheckout(cartItems: cartData, totalValue: price));
+                    Routers.goTO(context, toBody: AddressView(cartItems: cartData, totalValue: price));
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Constants.baseColor,

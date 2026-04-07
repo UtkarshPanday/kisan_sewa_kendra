@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'controller/constants.dart';
 import 'firebase_options.dart';
@@ -17,6 +18,13 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Load Environment Variables
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint("Dotenv loading error: $e");
+  }
+
   try {
     // Firebase Init
     await Firebase.initializeApp(
@@ -27,11 +35,10 @@ void main() async {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     await NotificationService.init();
 
-    // Initialize Meta Events and disable auto-logging to ensure only manual events are sent.
+    // Initialize Meta Events
     await MetaEvents.init();
-
   } catch (e) {
-    debugPrint("Initialization error: $e");
+    debugPrint("Firebase/Services initialization error: $e");
   }
 
   runApp(const MyApp());
@@ -72,6 +79,7 @@ class MyApp extends StatelessWidget {
           backgroundColor: Colors.white,
         ),
       ),
+      //gdrg
       home: const SplashScreen(),
     );
   }
