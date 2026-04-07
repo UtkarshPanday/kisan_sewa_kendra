@@ -18,10 +18,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Load Environment Variables
   try {
-    // Load Environment Variables
     await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint("Dotenv loading error: $e");
+  }
 
+  try {
     // Firebase Init
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -31,10 +35,10 @@ void main() async {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     await NotificationService.init();
 
-    // Initialize Meta Events and disable auto-logging to ensure only manual events are sent.
+    // Initialize Meta Events
     await MetaEvents.init();
   } catch (e) {
-    debugPrint("Initialization error: $e");
+    debugPrint("Firebase/Services initialization error: $e");
   }
 
   runApp(const MyApp());
