@@ -6,8 +6,22 @@
     <!-- ✅ REQUIRED FOR META AD ID (CRITICAL FOR ANDROID 12+) -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
 
+    <!-- ✅ REQUIRED FOR LOCATION FETCHING -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <!-- ✅ REQUIRED FOR UPI / PAYMENT APPS -->
     <queries>
+
+        <!-- Browser / HTTP / HTTPS Apps -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
 
         <!-- UPI Apps -->
         <intent>
