@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../controller/auth_controller.dart';
 import '../controller/constants.dart';
 import '../controller/update_service.dart';
+import 'auth/login_view.dart';
 import 'home_view.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -90,10 +92,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       await Future.delayed(const Duration(milliseconds: 500));
 
       if (mounted) {
+        // Check if user is already logged in
+        final bool loggedIn = AuthController.isLoggedIn();
+        final Widget destination = loggedIn ? const MyHomePage() : const LoginView();
+
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const MyHomePage(),
+            pageBuilder: (context, animation, secondaryAnimation) => destination,
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
             },
@@ -101,7 +107,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           ),
         ).then((_) {
           // Show optional update dialog on Home if applicable
-          if (updateType == UpdateType.optional && mounted) {
+          if (updateType == UpdateType.optional && mounted && loggedIn) {
              UpdateService.showUpdateDialog(context, UpdateType.optional);
           }
         });

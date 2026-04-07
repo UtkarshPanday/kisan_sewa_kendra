@@ -4,7 +4,7 @@ import '../components/ksk_appbar.dart';
 import '../components/network_image.dart';
 import '../controller/constants.dart';
 import '../controller/routers.dart';
-import 'checkout/shiprocket_checkout.dart';
+import 'checkout/address_view.dart';
 import 'home_view.dart';
 import '../controller/cart_controller.dart';
 import '../utils/meta_events.dart';
@@ -248,7 +248,7 @@ class _CartViewState extends State<CartView> {
             width: double.infinity,
             height: 55,
             child: FilledButton(
-              onPressed: () {
+                onPressed: () {
                 double totalVal = _getTotalValue();
 
                 String ids = _cartItems.map((e) => e.id.split('/').last).join(',');
@@ -273,7 +273,7 @@ class _CartViewState extends State<CartView> {
                   };
                 }).toList();
 
-                Routers.goTO(context, toBody: ShiprocketCheckout(cartItems: cartData, totalValue: totalVal));
+                Routers.goTO(context, toBody: AddressView(cartItems: cartData, totalValue: totalVal));
               },
               style: FilledButton.styleFrom(
                 backgroundColor: Constants.baseColor,

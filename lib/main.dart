@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'controller/constants.dart';
 import 'firebase_options.dart';
@@ -18,6 +19,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
+    // Load Environment Variables
+    await dotenv.load(fileName: ".env");
+
     // Firebase Init
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -29,7 +33,6 @@ void main() async {
 
     // Initialize Meta Events and disable auto-logging to ensure only manual events are sent.
     await MetaEvents.init();
-
   } catch (e) {
     debugPrint("Initialization error: $e");
   }
@@ -72,6 +75,7 @@ class MyApp extends StatelessWidget {
           backgroundColor: Colors.white,
         ),
       ),
+      //gdrg
       home: const SplashScreen(),
     );
   }

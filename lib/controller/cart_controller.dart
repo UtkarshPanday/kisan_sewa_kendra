@@ -108,4 +108,9 @@ class CartController {
     cartList.removeWhere((item) => item['id'].toString() == variantId.toString());
     await Pref.setPref(key: PrefKey.cart, value: jsonEncode(cartList));
   }
+
+  // ─── Clear entire cart (called after successful payment) ─────────────────
+  static Future<void> clearCart() async {
+    await Pref.removePrefKey(PrefKey.cart);
+  }
 }
