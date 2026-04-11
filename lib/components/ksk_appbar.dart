@@ -274,7 +274,7 @@ class CustomSearchDelegate extends SearchDelegate<String> {
           title: Text(product.title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text("${Constants.inr}${product.variants.first.price}", style: TextStyle(color: Constants.baseColor, fontWeight: FontWeight.w900, fontSize: 15)),
+            child: Text("${Constants.inr}${product.variants.isNotEmpty ? product.variants.first.price : '0'}", style: TextStyle(color: Constants.baseColor, fontWeight: FontWeight.w900, fontSize: 15)),
           ),
           trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
           onTap: () => Routers.goTO(context, toBody: ProductView(product: product)),

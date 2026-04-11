@@ -46,13 +46,15 @@ class _ProductViewState extends State<ProductView>
     {
       "name": "Rahul Sharma",
       "rating": 5.0,
-      "comment": "Very effective product. I saw results in just 1 week. Highly recommended!",
+      "comment":
+          "Very effective product. I saw results in just 1 week. Highly recommended!",
       "date": "2 days ago"
     },
     {
       "name": "Amit Patel",
       "rating": 4.0,
-      "comment": "Good quality and original product. Packaging was also very good.",
+      "comment":
+          "Good quality and original product. Packaging was also very good.",
       "date": "5 days ago"
     }
   ];
@@ -77,13 +79,17 @@ class _ProductViewState extends State<ProductView>
     MetaEvents.viewContent(
       id: widget.product.id,
       name: widget.product.title,
-      price: widget.product.variants.first.price,
+      price: widget.product.variants.isNotEmpty
+          ? widget.product.variants.first.price
+          : '0',
     );
 
     // Firebase Event: view_item
     FirebaseEvents.viewItem(
       widget.product.id,
-      widget.product.variants.first.price,
+      widget.product.variants.isNotEmpty
+          ? widget.product.variants.first.price
+          : '0',
     );
   }
 
@@ -108,7 +114,8 @@ class _ProductViewState extends State<ProductView>
     required String? comparePrice,
     required String sellingPrice,
   }) {
-    if (comparePrice == null || comparePrice.isEmpty) return const SizedBox.shrink();
+    if (comparePrice == null || comparePrice.isEmpty)
+      return const SizedBox.shrink();
 
     try {
       double mrp = double.parse(
@@ -152,7 +159,9 @@ class _ProductViewState extends State<ProductView>
           Icon(
             i < fullStars
                 ? Icons.star_rounded
-                : (i == fullStars && hasHalfStar ? Icons.star_half_rounded : Icons.star_outline_rounded),
+                : (i == fullStars && hasHalfStar
+                    ? Icons.star_half_rounded
+                    : Icons.star_outline_rounded),
             color: Colors.amber,
             size: size,
           ),
@@ -172,9 +181,18 @@ class _ProductViewState extends State<ProductView>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    if (widget.product.variants.isEmpty) {
+      return Scaffold(
+        appBar: KskAppbar(title: widget.product.title),
+        body:
+            const Center(child: Text("Product details currently unavailable")),
+      );
+    }
+
     final variant = widget.product.variants[_varientIndex];
     double fakeRating = 4.0 + (widget.product.id.hashCode % 11) / 10.0;
-    
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: KskAppbar(
@@ -208,14 +226,16 @@ class _ProductViewState extends State<ProductView>
                   right: 0,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: widget.product.images.asMap().entries.map((entry) {
+                    children:
+                        widget.product.images.asMap().entries.map((entry) {
                       return Container(
                         width: _carouselIndex == entry.key ? 22 : 7.0,
                         height: 7.0,
                         margin: const EdgeInsets.symmetric(horizontal: 3.0),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(10),
-                          color: Constants.baseColor.withOpacity(_carouselIndex == entry.key ? 1.0 : 0.2),
+                          color: Constants.baseColor.withOpacity(
+                              _carouselIndex == entry.key ? 1.0 : 0.2),
                         ),
                       );
                     }).toList(),
@@ -234,14 +254,19 @@ class _ProductViewState extends State<ProductView>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: Constants.baseColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           "KrishiKranti Organics".toUpperCase(),
-                          style: TextStyle(color: Constants.baseColor, fontSize: 11, letterSpacing: 1, fontWeight: FontWeight.w900),
+                          style: TextStyle(
+                              color: Constants.baseColor,
+                              fontSize: 11,
+                              letterSpacing: 1,
+                              fontWeight: FontWeight.w900),
                         ),
                       ),
                       _buildRatingStars(fakeRating),
@@ -250,7 +275,11 @@ class _ProductViewState extends State<ProductView>
                   const SizedBox(height: 12),
                   Text(
                     widget.product.title,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, height: 1.3, color: Colors.black87),
+                    style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        height: 1.3,
+                        color: Colors.black87),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -260,17 +289,25 @@ class _ProductViewState extends State<ProductView>
                         children: [
                           Text(
                             "${Constants.inr}${variant.price}",
-                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Constants.baseColor),
+                            style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w900,
+                                color: Constants.baseColor),
                           ),
                           if (variant.compareAtPrice != null)
                             Text(
                               "${Constants.inr}${variant.compareAtPrice}",
-                              style: TextStyle(fontSize: 16, color: Colors.grey[400], decoration: TextDecoration.lineThrough),
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[400],
+                                  decoration: TextDecoration.lineThrough),
                             ),
                         ],
                       ),
                       const Spacer(),
-                      _discount(comparePrice: variant.compareAtPrice, sellingPrice: variant.price),
+                      _discount(
+                          comparePrice: variant.compareAtPrice,
+                          sellingPrice: variant.price),
                     ],
                   ),
                 ],
@@ -285,7 +322,11 @@ class _ProductViewState extends State<ProductView>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Select Variant", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black)),
+                  const Text("Select Variant",
+                      style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                          color: Colors.black)),
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -298,11 +339,12 @@ class _ProductViewState extends State<ProductView>
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: widget.product.variants.length,
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2, 
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
-                        childAspectRatio: 2.1, 
+                        childAspectRatio: 2.1,
                       ),
                       itemBuilder: (context, i) {
                         final v = widget.product.variants[i];
@@ -310,18 +352,33 @@ class _ProductViewState extends State<ProductView>
                         final isOutOfStock = v.inventoryQuantity <= 0;
 
                         return WidgetButton(
-                          onTap: isOutOfStock ? null : () => setState(() => _varientIndex = i),
+                          onTap: isOutOfStock
+                              ? null
+                              : () => setState(() => _varientIndex = i),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 8),
                             decoration: BoxDecoration(
-                              color: isSelected ? Constants.baseColor : Colors.white,
+                              color: isSelected
+                                  ? Constants.baseColor
+                                  : Colors.white,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: isSelected ? Constants.baseColor : Colors.grey[300]!,
+                                color: isSelected
+                                    ? Constants.baseColor
+                                    : Colors.grey[300]!,
                                 width: 1.5,
                               ),
-                              boxShadow: isSelected ? [BoxShadow(color: Constants.baseColor.withOpacity(0.2), blurRadius: 6, offset: const Offset(0, 3))] : [],
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                          color: Constants.baseColor
+                                              .withOpacity(0.2),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 3))
+                                    ]
+                                  : [],
                             ),
                             child: Opacity(
                               opacity: isOutOfStock ? 0.5 : 1.0,
@@ -331,13 +388,15 @@ class _ProductViewState extends State<ProductView>
                                 children: [
                                   Text(
                                     v.title,
-                                    maxLines: 1, 
+                                    maxLines: 1,
                                     textAlign: TextAlign.center,
-                                    overflow: TextOverflow.ellipsis, 
+                                    overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      color: isSelected ? Colors.white : Colors.black87,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : Colors.black87,
                                       fontWeight: FontWeight.w900,
-                                      fontSize: 13, 
+                                      fontSize: 13,
                                       height: 1.1,
                                     ),
                                   ),
@@ -345,15 +404,20 @@ class _ProductViewState extends State<ProductView>
                                   Text(
                                     "${Constants.inr}${v.price}",
                                     style: TextStyle(
-                                      color: isSelected ? Colors.white.withOpacity(0.9) : Colors.grey[600],
-                                      fontSize: 13, 
+                                      color: isSelected
+                                          ? Colors.white.withOpacity(0.9)
+                                          : Colors.grey[600],
+                                      fontSize: 13,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                   if (isOutOfStock)
                                     const Text(
                                       "OUT OF STOCK",
-                                      style: TextStyle(color: Colors.red, fontSize: 8, fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                          color: Colors.red,
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.bold),
                                     ),
                                 ],
                               ),
@@ -381,7 +445,10 @@ class _ProductViewState extends State<ProductView>
                 indicatorColor: Constants.baseColor,
                 indicatorWeight: 4,
                 indicatorSize: TabBarIndicatorSize.tab,
-                labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, letterSpacing: 0.5),
+                labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    letterSpacing: 0.5),
                 tabs: const [
                   Tab(text: "OVERVIEW"),
                   Tab(text: "DESCRIPTION"),
@@ -390,8 +457,8 @@ class _ProductViewState extends State<ProductView>
             ),
 
             // --- Tab Content ---
-            _tabController.index == 0 
-                ? _buildOverviewContent() 
+            _tabController.index == 0
+                ? _buildOverviewContent()
                 : _buildDescriptionContent(),
 
             const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0)),
@@ -403,7 +470,7 @@ class _ProductViewState extends State<ProductView>
 
             // --- Write a Review ---
             _buildWriteReviewSection(),
-            
+
             // --- Customer Reviews ---
             _buildReviewsListSection(),
 
@@ -415,8 +482,16 @@ class _ProductViewState extends State<ProductView>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Similar Products", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.black)),
-                    Text("View All", style: TextStyle(color: Constants.baseColor, fontWeight: FontWeight.bold, fontSize: 14)),
+                    const Text("Similar Products",
+                        style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                            color: Colors.black)),
+                    Text("View All",
+                        style: TextStyle(
+                            color: Constants.baseColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14)),
                   ],
                 ),
               ),
@@ -442,7 +517,12 @@ class _ProductViewState extends State<ProductView>
         padding: const EdgeInsets.fromLTRB(20, 15, 20, 35),
         decoration: BoxDecoration(
           color: Colors.white,
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -5))],
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 20,
+                offset: const Offset(0, -5))
+          ],
         ),
         child: Row(
           children: [
@@ -473,11 +553,13 @@ class _ProductViewState extends State<ProductView>
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: const Text("Product added to cart!", style: TextStyle(fontWeight: FontWeight.bold)),
+                        content: const Text("Product added to cart!",
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                         backgroundColor: Constants.baseColor,
                         behavior: SnackBarBehavior.floating,
                         margin: const EdgeInsets.all(20),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                     );
                   },
@@ -486,13 +568,16 @@ class _ProductViewState extends State<ProductView>
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: EdgeInsets.zero, // Prevent text overflow
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   child: const FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text("Add to Cart", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                      child: Text("Add to Cart",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 16)),
                     ),
                   ),
                 ),
@@ -504,10 +589,14 @@ class _ProductViewState extends State<ProductView>
                 height: 52,
                 child: ElevatedButton(
                   onPressed: () {
-                    final variantId = int.tryParse(variant.id.split('/').last) ?? 0;
-                    final productId = int.tryParse(widget.product.id.split('/').last) ?? 0;
-                    
-                    double price = double.tryParse(variant.price.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+                    final variantId =
+                        int.tryParse(variant.id.split('/').last) ?? 0;
+                    final productId =
+                        int.tryParse(widget.product.id.split('/').last) ?? 0;
+
+                    double price = double.tryParse(
+                            variant.price.replaceAll(RegExp(r'[^\d.]'), '')) ??
+                        0.0;
 
                     // Meta Event: Initiate Checkout
                     MetaEvents.initiateCheckout(
@@ -518,30 +607,37 @@ class _ProductViewState extends State<ProductView>
                     // Firebase Event: begin_checkout
                     FirebaseEvents.beginCheckout(price);
 
-                    final cartData = [{
-                      "id": variantId,
-                      "quantity": 1,
-                      "variant_id": variantId,
-                      "product_id": productId,
-                      "title": widget.product.title,
-                      "price": price,
-                      "image": widget.product.image
-                    }];
+                    final cartData = [
+                      {
+                        "id": variantId,
+                        "quantity": 1,
+                        "variant_id": variantId,
+                        "product_id": productId,
+                        "title": widget.product.title,
+                        "price": price,
+                        "image": widget.product.image
+                      }
+                    ];
 
-                    Routers.goTO(context, toBody: AddressView(cartItems: cartData, totalValue: price));
+                    Routers.goTO(context,
+                        toBody: AddressView(
+                            cartItems: cartData, totalValue: price));
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Constants.baseColor,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: EdgeInsets.zero, // Prevent text overflow
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   child: const FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text("Buy Now", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                      child: Text("Buy Now",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 16)),
                     ),
                   ),
                 ),
@@ -561,10 +657,13 @@ class _ProductViewState extends State<ProductView>
     };
 
     String techContent = "";
-    if (widget.product.title.contains('(') && widget.product.title.contains(')')) {
-      techContent = widget.product.title.substring(widget.product.title.lastIndexOf('(') + 1, widget.product.title.lastIndexOf(')'));
+    if (widget.product.title.contains('(') &&
+        widget.product.title.contains(')')) {
+      techContent = widget.product.title.substring(
+          widget.product.title.lastIndexOf('(') + 1,
+          widget.product.title.lastIndexOf(')'));
     }
-    
+
     if (techContent.isNotEmpty) {
       details["Technical Content"] = techContent;
     }
@@ -572,7 +671,12 @@ class _ProductViewState extends State<ProductView>
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Column(
-        children: details.entries.where((e) => e.value.isNotEmpty).toList().asMap().entries.map((entry) {
+        children: details.entries
+            .where((e) => e.value.isNotEmpty)
+            .toList()
+            .asMap()
+            .entries
+            .map((entry) {
           final isEven = entry.key % 2 == 0;
           return Container(
             color: isEven ? Colors.grey[50] : Colors.white,
@@ -582,10 +686,19 @@ class _ProductViewState extends State<ProductView>
               children: [
                 SizedBox(
                   width: 130,
-                  child: Text(entry.value.key, style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600, fontSize: 14)),
+                  child: Text(entry.value.key,
+                      style: TextStyle(
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14)),
                 ),
                 Expanded(
-                  child: Text(entry.value.value, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w800, fontSize: 14, height: 1.4)),
+                  child: Text(entry.value.value,
+                      style: const TextStyle(
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          height: 1.4)),
                 ),
               ],
             ),
@@ -599,7 +712,9 @@ class _ProductViewState extends State<ProductView>
     if (widget.product.body.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(40),
-        child: Center(child: Text("No description available.", style: TextStyle(color: Colors.grey))),
+        child: Center(
+            child: Text("No description available.",
+                style: TextStyle(color: Colors.grey))),
       );
     }
 
@@ -608,21 +723,28 @@ class _ProductViewState extends State<ProductView>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("About Product", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Colors.black)),
+          const Text("About Product",
+              style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 17,
+                  color: Colors.black)),
           const SizedBox(height: 15),
-          
           AnimatedSize(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: _isExpanded ? const BoxConstraints() : const BoxConstraints(maxHeight: 250), // Increased default height
+              constraints: _isExpanded
+                  ? const BoxConstraints()
+                  : const BoxConstraints(
+                      maxHeight: 250), // Increased default height
               child: ClipRect(
                 child: Stack(
                   children: [
                     HtmlWidget(
                       widget.product.body,
-                      textStyle: const TextStyle(fontSize: 14, color: Color(0xFF666666), height: 1.7),
+                      textStyle: const TextStyle(
+                          fontSize: 14, color: Color(0xFF666666), height: 1.7),
                       // Add a factory for better handling if needed, but default should work
                     ),
                     if (!_isExpanded)
@@ -650,13 +772,13 @@ class _ProductViewState extends State<ProductView>
               ),
             ),
           ),
-          
           const SizedBox(height: 20),
           Center(
             child: WidgetButton(
               onTap: () => setState(() => _isExpanded = !_isExpanded),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: Constants.baseColor, width: 1.5),
@@ -666,11 +788,17 @@ class _ProductViewState extends State<ProductView>
                   children: [
                     Text(
                       _isExpanded ? "VIEW LESS" : "VIEW MORE",
-                      style: TextStyle(color: Constants.baseColor, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1),
+                      style: TextStyle(
+                          color: Constants.baseColor,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          letterSpacing: 1),
                     ),
                     const SizedBox(width: 8),
                     Icon(
-                      _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      _isExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
                       color: Constants.baseColor,
                       size: 20,
                     ),
@@ -696,11 +824,18 @@ class _ProductViewState extends State<ProductView>
             children: [
               Container(
                 padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(color: Constants.baseColor.withOpacity(0.1), shape: BoxShape.circle),
-                child: Icon(Icons.help_outline_rounded, color: Constants.baseColor, size: 18),
+                decoration: BoxDecoration(
+                    color: Constants.baseColor.withOpacity(0.1),
+                    shape: BoxShape.circle),
+                child: Icon(Icons.help_outline_rounded,
+                    color: Constants.baseColor, size: 18),
               ),
               const SizedBox(width: 10),
-              const Text("How to Use", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Colors.black)),
+              const Text("How to Use",
+                  style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 17,
+                      color: Colors.black)),
             ],
           ),
           const SizedBox(height: 20),
@@ -713,11 +848,18 @@ class _ProductViewState extends State<ProductView>
             ),
             child: Column(
               children: [
-                _usageItem(Icons.water_drop_outlined, "Dosage", "Mix 2-3 ml per liter of water."),
-                const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1, color: Color(0xFFEBEBEB))),
-                _usageItem(Icons.schedule_rounded, "Apply Time", "Best applied during early morning or evening."),
-                const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1, color: Color(0xFFEBEBEB))),
-                _usageItem(Icons.auto_awesome_outlined, "Method", "Foliar spray for maximum effectiveness."),
+                _usageItem(Icons.water_drop_outlined, "Dosage",
+                    "Mix 2-3 ml per liter of water."),
+                const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(height: 1, color: Color(0xFFEBEBEB))),
+                _usageItem(Icons.schedule_rounded, "Apply Time",
+                    "Best applied during early morning or evening."),
+                const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(height: 1, color: Color(0xFFEBEBEB))),
+                _usageItem(Icons.auto_awesome_outlined, "Method",
+                    "Foliar spray for maximum effectiveness."),
               ],
             ),
           ),
@@ -731,7 +873,12 @@ class _ProductViewState extends State<ProductView>
       children: [
         Container(
           padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 5)]),
+          decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 5)
+              ]),
           child: Icon(icon, color: Constants.baseColor, size: 24),
         ),
         const SizedBox(width: 15),
@@ -739,9 +886,15 @@ class _ProductViewState extends State<ProductView>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.black87)),
+              Text(title,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                      color: Colors.black87)),
               const SizedBox(height: 4),
-              Text(desc, style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.3)),
+              Text(desc,
+                  style: TextStyle(
+                      fontSize: 13, color: Colors.grey[600], height: 1.3)),
             ],
           ),
         ),
@@ -757,7 +910,8 @@ class _ProductViewState extends State<ProductView>
         children: [
           const Text(
             "Write a Review",
-            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Colors.black),
+            style: TextStyle(
+                fontWeight: FontWeight.w900, fontSize: 17, color: Colors.black),
           ),
           const SizedBox(height: 8),
           Text(
@@ -765,7 +919,7 @@ class _ProductViewState extends State<ProductView>
             style: TextStyle(fontSize: 13, color: Colors.grey[600]),
           ),
           const SizedBox(height: 20),
-          
+
           // Star Rating Input
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -775,7 +929,9 @@ class _ProductViewState extends State<ProductView>
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Icon(
-                    index < _userRating ? Icons.star_rounded : Icons.star_outline_rounded,
+                    index < _userRating
+                        ? Icons.star_rounded
+                        : Icons.star_outline_rounded,
                     color: Colors.amber,
                     size: 40,
                   ),
@@ -783,9 +939,9 @@ class _ProductViewState extends State<ProductView>
               );
             }),
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // Review Text Field
           TextField(
             controller: _reviewController,
@@ -805,13 +961,14 @@ class _ProductViewState extends State<ProductView>
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Constants.baseColor.withOpacity(0.5)),
+                borderSide:
+                    BorderSide(color: Constants.baseColor.withOpacity(0.5)),
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           SizedBox(
             width: double.infinity,
             height: 50,
@@ -823,14 +980,15 @@ class _ProductViewState extends State<ProductView>
                   );
                   return;
                 }
-                
+
                 if (_reviewController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Please write a review message")),
+                    const SnackBar(
+                        content: Text("Please write a review message")),
                   );
                   return;
                 }
-                
+
                 // Add review to local list
                 setState(() {
                   _reviews.insert(0, {
@@ -856,12 +1014,16 @@ class _ProductViewState extends State<ProductView>
               style: ElevatedButton.styleFrom(
                 backgroundColor: Constants.baseColor,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 elevation: 0,
               ),
               child: const Text(
                 "SUBMIT REVIEW",
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 1),
+                style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                    letterSpacing: 1),
               ),
             ),
           ),
@@ -880,7 +1042,8 @@ class _ProductViewState extends State<ProductView>
           padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Text(
             "Customer Reviews",
-            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Colors.black),
+            style: TextStyle(
+                fontWeight: FontWeight.w900, fontSize: 17, color: Colors.black),
           ),
         ),
         ListView.builder(
@@ -906,7 +1069,8 @@ class _ProductViewState extends State<ProductView>
                     children: [
                       Text(
                         review['name'],
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                       Text(
                         review['date'],
@@ -919,7 +1083,8 @@ class _ProductViewState extends State<ProductView>
                   const SizedBox(height: 8),
                   Text(
                     review['comment'],
-                    style: const TextStyle(color: Colors.black87, fontSize: 13, height: 1.4),
+                    style: const TextStyle(
+                        color: Colors.black87, fontSize: 13, height: 1.4),
                   ),
                 ],
               ),

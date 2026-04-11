@@ -23,8 +23,11 @@ class ShopifyAPI {
     required String link,
   }) async {
     try {
+      String path =
+          link.contains('?') ? link.replaceFirst('?', '.json?') : '$link.json';
+
       var res = await http.get(
-        Uri.parse("$_baseUrl/$link.json"),
+        Uri.parse("$_baseUrl/$path"),
         headers: _header,
       );
       if (res.statusCode == 200) {
@@ -49,6 +52,177 @@ class ShopifyAPI {
       };
     }
     return {};
+  }
+
+  static Future<List<dynamic>> getCustomerOrders(String customerId) async {
+    try {
+      final String query = '''
+        query {
+          orders(first: 50, reverse: true, query: "customer_id:$customerId") {
+            nodes {
+              id
+              name
+              createdAt
+              totalPriceSet {
+                presentmentMoney {
+                   amount
+                   currencyCode
+                }
+              }
+              displayFulfillmentStatus
+              displayFinancialStatus
+              cancelledAt
+              closedAt
+              confirmed
+              lineItems(first: 50) {
+                nodes {
+                  title
+                  quantity
+                  image {
+                    url
+                  }
+                  variant {
+                    product {
+                      featuredImage {
+                        url
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ''';
+
+      var res = await http.post(
+        Uri.parse(
+            "https://3b7f20-3.myshopify.com/admin/api/2024-10/graphql.json"),
+        body: json.encode({'query': query}),
+        headers: {
+          'content-type': 'application/json',
+          'X-Shopify-Access-Token': Constants.shopifyAccessToken,
+        },
+      );
+
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(res.body);
+        if (decoded['data'] != null && decoded['data']['orders'] != null) {
+          final List orders = [];
+          for (var node in decoded['data']['orders']['nodes']) {
+            try {
+              String totalPrice = '0.00';
+              String currency = 'INR';
+              if (node['totalPriceSet'] != null &&
+                  node['totalPriceSet']['presentmentMoney'] != null) {
+                totalPrice = node['totalPriceSet']['presentmentMoney']['amount']
+                        ?.toString() ??
+                    '0.00';
+                currency = node['totalPriceSet']['presentmentMoney']
+                            ['currencyCode']
+                        ?.toString() ??
+                    'INR';
+              }
+
+              orders.add({
+                'id': node['id'].toString().split('/').last,
+                'order_number': node['name'].toString().replaceAll('#', ''),
+                'created_at': node['createdAt'],
+                'total_price': totalPrice,
+                'currency': currency,
+                'fulfillment_status':
+                    node['displayFulfillmentStatus']?.toLowerCase() ??
+                        'pending',
+                'financial_status':
+                    node['displayFinancialStatus']?.toLowerCase() ?? 'pending',
+                'cancelled_at': node['cancelledAt'],
+                'closed_at': node['closedAt'],
+                'confirmed': node['confirmed'] ?? false,
+                'line_items':
+                    (node['lineItems']?['nodes'] as List? ?? []).map((li) {
+                  String? img = li['image']?['url'] ??
+                      li['variant']?['product']?['featuredImage']?['url'];
+                  return {
+                    'title': li['title'] ?? '',
+                    'quantity': li['quantity'] ?? 0,
+                    'image': img,
+                  };
+                }).toList(),
+              });
+            } catch (e) {
+              debugPrint("Mapper Error for order node: $e");
+            }
+          }
+          return orders;
+        }
+      }
+    } catch (e) {
+      debugPrint("getCustomerOrders Error: $e");
+    }
+    return [];
+  }
+
+  static Future<List<dynamic>> getOrderDetails(String orderId) async {
+    try {
+      final String query = '''
+        query {
+          order(id: "gid://shopify/Order/$orderId") {
+            lineItems(first: 50) {
+              nodes {
+                title
+                variantTitle
+                originalUnitPrice
+                image {
+                  url
+                }
+                variant {
+                  image {
+                    url
+                  }
+                  product {
+                    featuredImage {
+                      url
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ''';
+
+      var res = await http.post(
+        Uri.parse(
+            "https://3b7f20-3.myshopify.com/admin/api/2024-10/graphql.json"),
+        body: json.encode({'query': query}),
+        headers: {
+          'content-type': 'application/json',
+          'X-Shopify-Access-Token': Constants.shopifyAccessToken,
+        },
+      );
+
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(res.body);
+        if (decoded['data'] != null && decoded['data']['order'] != null) {
+          final nodes = decoded['data']['order']['lineItems']['nodes'] as List;
+          return nodes.map((li) {
+            String? imageUrl = li['image']?['url'] ??
+                li['variant']?['image']?['url'] ??
+                li['variant']?['product']?['featuredImage']?['url'];
+            return {
+              'title': li['title'],
+              'quantity': 1,
+              'price': li['originalUnitPrice'],
+              'variant_title': li['variantTitle'],
+              'image': imageUrl,
+            };
+          }).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint("getOrderDetails Error: $e");
+    }
+    return [];
   }
 }
 
@@ -177,11 +351,10 @@ class Shopify {
         ''',
       );
 
-      if (res.isNotEmpty && 
-          res['data'] != null && 
+      if (res.isNotEmpty &&
+          res['data'] != null &&
           res['data']['collection'] != null &&
           res['data']['collection']['products'] != null) {
-        
         List<ProductModel> list = [];
         for (var lis in res['data']['collection']['products']['nodes']) {
           List<Map<String, dynamic>> variants = [];
@@ -192,7 +365,8 @@ class Shopify {
                 "id": variant['id'].toString().replaceAll(_proVarIdPre, ''),
                 "title": variant['title'] ?? '',
                 "price": variant['price']?['amount']?.toString() ?? '0',
-                "compare_at_price": variant['compareAtPrice']?['amount']?.toString(),
+                "compare_at_price":
+                    variant['compareAtPrice']?['amount']?.toString(),
                 "inventory_quantity": variant['quantityAvailable'] ?? 0,
               };
               variants.add(vari);
@@ -206,19 +380,23 @@ class Shopify {
             "vendor": lis["vendor"] ?? '',
             "product_type": lis["productType"] ?? '',
             "handle": lis["handle"] ?? '',
-            "images": lis["images"] != null && lis["images"]['nodes'] != null 
-                ? (lis["images"]['nodes'] as List).map((e) => {"url": e['url']}).toList()
+            "images": lis["images"] != null && lis["images"]['nodes'] != null
+                ? (lis["images"]['nodes'] as List)
+                    .map((e) => {"url": e['url']})
+                    .toList()
                 : [],
             "variants": variants,
             "image": lis["featuredImage"],
           };
           list.add(ProductModel.fromJson(li));
         }
-        
+
         var pageInfo = res['data']['collection']['products']['pageInfo'];
         return {
           "product": list,
-          "end": (pageInfo != null && pageInfo['hasNextPage'] == true) ? pageInfo["endCursor"] : null,
+          "end": (pageInfo != null && pageInfo['hasNextPage'] == true)
+              ? pageInfo["endCursor"]
+              : null,
         };
       }
     } catch (e) {
@@ -227,9 +405,12 @@ class Shopify {
     return {"product": <ProductModel>[], "end": null};
   }
 
-  static Future<ProductModel?> getProductVariantDetails(BuildContext context, {required String variantId}) async {
+  static Future<ProductModel?> getProductVariantDetails(BuildContext context,
+      {required String variantId}) async {
     try {
-      final fullId = variantId.contains(_proVarIdPre) ? variantId : "$_proVarIdPre$variantId";
+      final fullId = variantId.contains(_proVarIdPre)
+          ? variantId
+          : "$_proVarIdPre$variantId";
       var res = await _getData(
         context,
         body: '''
@@ -268,14 +449,16 @@ class Shopify {
       if (res['data'] != null && res['data']['node'] != null) {
         var v = res['data']['node'];
         var p = v['product'];
-        
-        List<Map<String, dynamic>> variants = [{
-          "id": v['id'].toString().replaceAll(_proVarIdPre, ''),
-          "title": v['title'] ?? '',
-          "price": v['price']?['amount']?.toString() ?? '0',
-          "compare_at_price": v['compareAtPrice']?['amount']?.toString(),
-          "inventory_quantity": v['quantityAvailable'] ?? 0,
-        }];
+
+        List<Map<String, dynamic>> variants = [
+          {
+            "id": v['id'].toString().replaceAll(_proVarIdPre, ''),
+            "title": v['title'] ?? '',
+            "price": v['price']?['amount']?.toString() ?? '0',
+            "compare_at_price": v['compareAtPrice']?['amount']?.toString(),
+            "inventory_quantity": v['quantityAvailable'] ?? 0,
+          }
+        ];
 
         Map<String, dynamic> li = {
           "id": p['id'].toString().replaceAll(_proIdPre, ''),
@@ -284,8 +467,10 @@ class Shopify {
           "vendor": p["vendor"] ?? '',
           "product_type": p["productType"] ?? '',
           "handle": p["handle"] ?? '',
-          "images": p["images"] != null && p["images"]['nodes'] != null 
-              ? (p["images"]['nodes'] as List).map((e) => {"url": e['url']}).toList()
+          "images": p["images"] != null && p["images"]['nodes'] != null
+              ? (p["images"]['nodes'] as List)
+                  .map((e) => {"url": e['url']})
+                  .toList()
               : [],
           "variants": variants,
           "image": p["featuredImage"],
@@ -313,7 +498,9 @@ class Shopify {
           }
         ''',
       );
-      if (res.isNotEmpty && res['data'] != null && res['data']['localization'] != null) {
+      if (res.isNotEmpty &&
+          res['data'] != null &&
+          res['data']['localization'] != null) {
         List<LocalizationModel> list = [];
         for (var lis in res['data']['localization']['availableLanguages']) {
           list.add(LocalizationModel(
@@ -366,7 +553,9 @@ class Shopify {
         }
           ''',
       );
-      if (res.isNotEmpty && res['data'] != null && res['data']['productRecommendations'] != null) {
+      if (res.isNotEmpty &&
+          res['data'] != null &&
+          res['data']['productRecommendations'] != null) {
         List<ProductModel> list = [];
         for (var lis in res['data']['productRecommendations']) {
           List<Map<String, dynamic>> variants = [];
@@ -377,7 +566,8 @@ class Shopify {
                 "id": variant['id'].toString().replaceAll(_proVarIdPre, ''),
                 "title": variant['title'] ?? '',
                 "price": variant['price']?['amount']?.toString() ?? '0',
-                "compare_at_price": variant['compareAtPrice']?['amount']?.toString(),
+                "compare_at_price":
+                    variant['compareAtPrice']?['amount']?.toString(),
                 "inventory_quantity": variant['quantityAvailable'] ?? 0,
               });
             }
@@ -390,8 +580,10 @@ class Shopify {
             "vendor": lis["vendor"] ?? '',
             "product_type": lis["productType"] ?? '',
             "handle": lis["handle"] ?? '',
-            "images": lis["images"] != null && lis["images"]['nodes'] != null 
-                ? (lis["images"]['nodes'] as List).map((e) => {"url": e['url']}).toList()
+            "images": lis["images"] != null && lis["images"]['nodes'] != null
+                ? (lis["images"]['nodes'] as List)
+                    .map((e) => {"url": e['url']})
+                    .toList()
                 : [],
             "variants": variants,
             "image": lis["featuredImage"],
@@ -432,7 +624,9 @@ class Shopify {
             }
           ''',
       );
-      if (res.isNotEmpty && res['data'] != null && res['data']['collections'] != null) {
+      if (res.isNotEmpty &&
+          res['data'] != null &&
+          res['data']['collections'] != null) {
         List<CategoriesModel> list = [];
         for (var edge in res['data']['collections']['edges']) {
           var node = edge['node'];
@@ -442,7 +636,9 @@ class Shopify {
           }
           list.add(
             CategoriesModel(
-              id: int.tryParse(node['id'].toString().replaceAll(_colIdPre, '')) ?? 0,
+              id: int.tryParse(
+                      node['id'].toString().replaceAll(_colIdPre, '')) ??
+                  0,
               title: node['title'] ?? '',
               handle: node['handle'] ?? '',
               description: node['description'] ?? '',
@@ -458,7 +654,8 @@ class Shopify {
     return [];
   }
 
-  static Future<List<CategoriesModel>> getBannerCollections(BuildContext context) async {
+  static Future<List<CategoriesModel>> getBannerCollections(
+      BuildContext context) async {
     try {
       var res = await _getData(
         context,
@@ -481,7 +678,9 @@ class Shopify {
             }
             list.add(
               CategoriesModel(
-                id: int.tryParse(node['id'].toString().replaceAll(_colIdPre, '')) ?? 0,
+                id: int.tryParse(
+                        node['id'].toString().replaceAll(_colIdPre, '')) ??
+                    0,
                 title: node['title'] ?? '',
                 handle: node['handle'] ?? '',
                 description: node['description'] ?? '',
@@ -498,7 +697,8 @@ class Shopify {
     return [];
   }
 
-  static Future<String> checkout(BuildContext context, {required List<dynamic> cartList}) async {
+  static Future<String> checkout(BuildContext context,
+      {required List<dynamic> cartList}) async {
     try {
       List<Map<String, dynamic>> list = [];
       for (var cart in cartList) {
@@ -521,7 +721,7 @@ class Shopify {
           }
         }
       ''';
-      
+
       var res = await _getData(
         context,
         body: query,
@@ -530,7 +730,9 @@ class Shopify {
           "input": {"lines": list},
         },
       );
-      if (res['data'] != null && res['data']['cartCreate'] != null && res['data']['cartCreate']['cart'] != null) {
+      if (res['data'] != null &&
+          res['data']['cartCreate'] != null &&
+          res['data']['cartCreate']['cart'] != null) {
         await Pref.setPref(
           key: PrefKey.checkoutId,
           value: res['data']['cartCreate']['cart']['id'],
@@ -587,7 +789,9 @@ class Shopify {
           }
           ''',
       );
-      if (res.isNotEmpty && res['data'] != null && res['data']['search'] != null) {
+      if (res.isNotEmpty &&
+          res['data'] != null &&
+          res['data']['search'] != null) {
         List<ProductModel> list = [];
         for (var lis in res['data']['search']['nodes']) {
           List<Map<String, dynamic>> variants = [];
@@ -598,7 +802,8 @@ class Shopify {
                 "id": variant['id'].toString().replaceAll(_proVarIdPre, ''),
                 "title": variant['title'] ?? '',
                 "price": variant['price']?['amount']?.toString() ?? '0',
-                "compare_at_price": variant['compareAtPrice']?['amount']?.toString(),
+                "compare_at_price":
+                    variant['compareAtPrice']?['amount']?.toString(),
                 "inventory_quantity": variant['quantityAvailable'] ?? 0,
               });
             }
@@ -611,8 +816,10 @@ class Shopify {
             "vendor": lis["vendor"] ?? '',
             "product_type": lis["productType"] ?? '',
             "handle": lis["handle"] ?? '',
-            "images": lis["images"] != null && lis["images"]['nodes'] != null 
-                ? (lis["images"]['nodes'] as List).map((e) => {"url": e['url']}).toList()
+            "images": lis["images"] != null && lis["images"]['nodes'] != null
+                ? (lis["images"]['nodes'] as List)
+                    .map((e) => {"url": e['url']})
+                    .toList()
                 : [],
             "variants": variants,
             "image": lis["featuredImage"],
@@ -663,10 +870,25 @@ class Shopify {
   }
 
   // Auth functions removed
-  static Future<Map<String, dynamic>?> getUserInfo(BuildContext context) async => null;
-  static Future<bool> login(context, {required String email, required String password}) async => false;
-  static Future<String> signUp(context, {required String fName, required String lName, required String mobile, required String email, required String password}) async => "";
-  static Future<String> updateDetails(context, {required String fName, required String lName, required String mobile, required String email}) async => "";
+  static Future<Map<String, dynamic>?> getUserInfo(
+          BuildContext context) async =>
+      null;
+  static Future<bool> login(context,
+          {required String email, required String password}) async =>
+      false;
+  static Future<String> signUp(context,
+          {required String fName,
+          required String lName,
+          required String mobile,
+          required String email,
+          required String password}) async =>
+      "";
+  static Future<String> updateDetails(context,
+          {required String fName,
+          required String lName,
+          required String mobile,
+          required String email}) async =>
+      "";
 
   static Future<void> share({required String url}) async {
     await Share.share(url);
@@ -738,7 +960,9 @@ class ShopifyAdmin {
               }
           ''',
       );
-      if (res.isNotEmpty && res['data'] != null && res['data']['productVariant'] != null) {
+      if (res.isNotEmpty &&
+          res['data'] != null &&
+          res['data']['productVariant'] != null) {
         var proVer = res['data']['productVariant'];
         var proud = proVer['product'];
         List<String> imgList = [];
@@ -747,7 +971,7 @@ class ShopifyAdmin {
             imgList.add(img['url']?.toString() ?? '');
           }
         }
-        
+
         return ProductModel(
           id: proud["id"].toString().replaceAll(_proIdPre, ''),
           title: proud["title"] ?? '',
@@ -822,17 +1046,17 @@ class ShopifyAdmin {
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         List<Map<String, dynamic>> discounts = [];
-        
+
         if (data['data'] != null && data['data']['codeDiscountNodes'] != null) {
           final nodes = data['data']['codeDiscountNodes']['edges'] as List;
-          
+
           for (var edge in nodes) {
             final node = edge['node']['codeDiscount'];
             if (node == null || node.isEmpty) continue;
-            
+
             final codesList = node['codes']['edges'] as List?;
             if (codesList == null || codesList.isEmpty) continue;
-            
+
             final codeNode = codesList.first['node'];
             if (codeNode == null) continue;
 
@@ -841,13 +1065,16 @@ class ShopifyAdmin {
             String type = 'fixed_amount';
 
             if (valObj != null) {
-               if (valObj['amount'] != null) {
-                  value = double.tryParse(valObj['amount']['amount'].toString()) ?? 0;
-                  type = 'fixed_amount';
-               } else if (valObj['percentage'] != null) {
-                  value = (double.tryParse(valObj['percentage'].toString()) ?? 0) * 100;
-                  type = 'percentage';
-               }
+              if (valObj['amount'] != null) {
+                value =
+                    double.tryParse(valObj['amount']['amount'].toString()) ?? 0;
+                type = 'fixed_amount';
+              } else if (valObj['percentage'] != null) {
+                value =
+                    (double.tryParse(valObj['percentage'].toString()) ?? 0) *
+                        100;
+                type = 'percentage';
+              }
             }
 
             discounts.add({
@@ -868,7 +1095,8 @@ class ShopifyAdmin {
     return [];
   }
 
-  static Future<Map<String, dynamic>?> validateDiscountCode({required String code}) async {
+  static Future<Map<String, dynamic>?> validateDiscountCode(
+      {required String code}) async {
     try {
       String query = '''
         query {
@@ -896,7 +1124,7 @@ class ShopifyAdmin {
           }
         }
       ''';
-      
+
       var res = await http.post(
         Uri.parse(_baseUrl),
         body: json.encode({'query': query}),
@@ -905,9 +1133,11 @@ class ShopifyAdmin {
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        if (data['data'] != null && data['data']['codeDiscountNodeByCode'] != null) {
-          final discount = data['data']['codeDiscountNodeByCode']['codeDiscount'];
-          
+        if (data['data'] != null &&
+            data['data']['codeDiscountNodeByCode'] != null) {
+          final discount =
+              data['data']['codeDiscountNodeByCode']['codeDiscount'];
+
           if (discount['status'] != 'ACTIVE') return null;
 
           final valObj = discount['customerGets']['value'];
@@ -918,7 +1148,8 @@ class ShopifyAdmin {
             value = double.tryParse(valObj['amount']['amount'].toString()) ?? 0;
             type = 'fixed_amount';
           } else if (valObj['percentage'] != null) {
-            value = (double.tryParse(valObj['percentage'].toString()) ?? 0) * 100;
+            value =
+                (double.tryParse(valObj['percentage'].toString()) ?? 0) * 100;
             type = 'percentage';
           }
 

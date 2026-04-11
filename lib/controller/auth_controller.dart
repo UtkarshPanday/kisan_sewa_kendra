@@ -23,7 +23,15 @@ class AuthController {
 
   static Future<String?> getSavedPhone() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyPhone);
+    String? phone = prefs.getString(_keyPhone);
+    if (phone == null && _auth.currentUser?.phoneNumber != null) {
+      String fbPhone = _auth.currentUser!.phoneNumber!;
+      if (fbPhone.startsWith('+91')) {
+        fbPhone = fbPhone.substring(3);
+      }
+      return fbPhone;
+    }
+    return phone;
   }
 
   static Future<String?> getSavedName() async {
@@ -164,7 +172,10 @@ class AuthController {
 
             onAutoVerified();
           } catch (e) {
-            onError('Auto-verification failed: $e');
+            debugPrint('Auto-verification failed: $e');
+            if (_auth.currentUser != null) {
+              onAutoVerified();
+            }
           }
         },
         verificationFailed: (FirebaseAuthException e) {
@@ -235,9 +246,10 @@ class AuthController {
       };
 
       // Search for existing customer by phone
+      // %2B correctly URL-encodes the + sign, ensuring Shopify correctly matches existing phone numbers
       final searchRes = await http.get(
         Uri.parse(
-            '$baseUrl/customers/search.json?query=phone:+91$phone&limit=1'),
+            '$baseUrl/customers/search.json?query=phone:%2B91$phone&limit=1'),
         headers: headers,
       );
 

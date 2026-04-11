@@ -14,6 +14,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await NotificationService.firebaseMessagingBackgroundHandler(message);
 }
+
 //this is the dev branch
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
