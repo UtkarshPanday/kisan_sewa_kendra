@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../components/network_image.dart';
@@ -72,178 +73,181 @@ class _CategoriesState extends State<Categories>
   Widget build(BuildContext context) {
     super.build(context);
 
-    Widget content;
+    Widget innerContent;
     if (_isLoading) {
-      content = _buildShimmerGrid();
+      innerContent = _buildShimmerGrid();
     } else if (_categories.isEmpty) {
-      content = const Center(
+      innerContent = const Center(
         child: Text("No categories found."),
       );
     } else {
-      content = Container(
-        color: const Color(0xffF9FBF9),
-        child: Column(
-          children: [
-            // Fixed Header (Not affected by refresh pull)
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned(
-                  top: -50,
-                  right: -30,
-                  child: Container(
-                    width: 200,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: Constants.baseColor.withOpacity(0.05),
-                      shape: BoxShape.circle,
-                    ),
+      innerContent = Column(
+        children: [
+          // Fixed Header (Not affected by refresh pull)
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                top: -50,
+                right: -30,
+                child: Container(
+                  width: 200,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Constants.baseColor.withOpacity(0.05),
+                    shape: BoxShape.circle,
                   ),
                 ),
-                Positioned(
-                  top: 40,
-                  left: -20,
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: Constants.baseColor.withOpacity(0.03),
-                      shape: BoxShape.circle,
-                    ),
+              ),
+              Positioned(
+                top: 40,
+                left: -20,
+                child: Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: Constants.baseColor.withOpacity(0.03),
+                    shape: BoxShape.circle,
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-                  decoration: const BoxDecoration(
-                    color: Colors.transparent,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Shop by Category",
-                            style: GoogleFonts.outfit(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                              color: Constants.baseColor,
-                              letterSpacing: -0.5,
-                            ),
+              ),
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                decoration: const BoxDecoration(
+                  color: Colors.transparent,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Shop by Category",
+                          style: GoogleFonts.outfit(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                            color: Constants.baseColor,
+                            letterSpacing: -0.5,
                           ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: Constants.baseColor,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  "${_categories.length} CATEGORIES",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Constants.baseColor,
+                                borderRadius: BorderRadius.circular(6),
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                "Premium Selection",
+                              child: Text(
+                                "${_categories.length} CATEGORIES",
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey[600],
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(15),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Constants.baseColor.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Premium Selection",
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[600],
+                              ),
                             ),
                           ],
                         ),
-                        child: Icon(
-                          Icons.grid_view_rounded,
-                          color: Constants.baseColor,
-                          size: 22,
-                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Constants.baseColor.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            // Refreshable Category List
-            Expanded(
-              child: RefreshIndicator(
-                color: Constants.baseColor,
-                backgroundColor: Colors.white,
-                onRefresh: () => _init(isRefresh: true),
-                child: CustomScrollView(
-                  physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(),
-                  ),
-                  slivers: [
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 20),
-                      sliver: SliverGrid(
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 0.85,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final category = _categories[index];
-                            return TweenAnimationBuilder<double>(
-                              duration:
-                                  Duration(milliseconds: 300 + (index * 50)),
-                              tween: Tween(begin: 0.0, end: 1.0),
-                              curve: Curves.easeOutCubic,
-                              builder: (context, value, child) {
-                                return Transform.translate(
-                                  offset: Offset(0, 20 * (1 - value)),
-                                  child: Opacity(
-                                    opacity: value,
-                                    child: _buildCategoryCard(category),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                          childCount: _categories.length,
-                        ),
+                      child: Icon(
+                        Icons.grid_view_rounded,
+                        color: Constants.baseColor,
+                        size: 22,
                       ),
                     ),
                   ],
                 ),
               ),
+            ],
+          ),
+          // Refreshable Category List
+          Expanded(
+            child: RefreshIndicator(
+              color: Constants.baseColor,
+              backgroundColor: Colors.white,
+              onRefresh: () => _init(isRefresh: true),
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 20),
+                    sliver: SliverGrid(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.85,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final category = _categories[index];
+                          return TweenAnimationBuilder<double>(
+                            duration:
+                                Duration(milliseconds: 300 + (index * 50)),
+                            tween: Tween(begin: 0.0, end: 1.0),
+                            curve: Curves.easeOutCubic,
+                            builder: (context, value, child) {
+                              return Transform.translate(
+                                offset: Offset(0, 20 * (1 - value)),
+                                child: Opacity(
+                                  opacity: value,
+                                  child: _buildCategoryCard(category),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                        childCount: _categories.length,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
-    return SafeArea(child: content);
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Container(
+        color: const Color(0xffF9FBF9),
+        child: SafeArea(child: innerContent),
+      ),
+    );
   }
 
   Widget _buildCategoryCard(CategoriesModel category) {

@@ -1,5 +1,6 @@
 import 'package:carousel_slider_plus/carousel_slider_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -317,120 +318,125 @@ class _HomeState extends State<Home> {
       }
     }
 
-    return RefreshIndicator(
-      color: const Color(0xFF26842c),
-      onRefresh: _refresh,
-      child: ListView(
-        controller: widget.scrollController,
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
-        ),
-        padding: EdgeInsets.zero,
-        children: [
-          // --- HERO CAROUSEL ---
-          if (_isLoadingBanners)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-              child: Container(
-                height: 180,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF26842c))),
-              ),
-            )
-          else if (_banners.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(15, 8, 15, 8),
-              child: HomeCarousel(
-                banners: _banners,
-                onBannerClick: _handleBannerClick,
-              ),
-            ),
-
-          const SizedBox(height: 8),
-
-          // --- CATEGORIES SECTION ---
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Text(
-                  "Categories",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  width: 60,
-                  height: 3,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: RefreshIndicator(
+        color: const Color(0xFF26842c),
+        onRefresh: _refresh,
+        child: ListView(
+          controller: widget.scrollController,
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          padding: EdgeInsets.zero,
+          children: [
+            // --- HERO CAROUSEL ---
+            if (_isLoadingBanners)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                child: Container(
+                  height: 180,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF26842c),
-                    borderRadius: BorderRadius.circular(2),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
                   ),
+                  child: const Center(
+                      child:
+                          CircularProgressIndicator(color: Color(0xFF26842c))),
                 ),
-                const SizedBox(height: 16),
-                if (_isLoadingCats)
-                  const SizedBox(
-                    height: 200,
-                    child: Center(
-                        child: CircularProgressIndicator(
-                            color: Color(0xFF26842c))),
-                  )
-                else
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: EdgeInsets.zero,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 15,
-                      mainAxisSpacing: 15,
-                      childAspectRatio: 1.0,
+              )
+            else if (_banners.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(15, 8, 15, 8),
+                child: HomeCarousel(
+                  banners: _banners,
+                  onBannerClick: _handleBannerClick,
+                ),
+              ),
+
+            const SizedBox(height: 8),
+
+            // --- CATEGORIES SECTION ---
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text(
+                    "Categories",
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    width: 60,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF26842c),
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    itemCount: _categories.length,
-                    itemBuilder: (context, index) {
-                      final cat = _categories[index];
-                      return WidgetButton(
-                        onTap: () => Routers.goTO(context,
-                            toBody: CollectionView(
-                                collectionId: cat.id.toString())),
-                        child: Card(
-                          elevation: 0.5,
-                          color: Colors.grey[50],
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(15),
-                            child: KskNetworkImage(
-                              cat.image,
-                              fit: BoxFit.cover,
+                  ),
+                  const SizedBox(height: 16),
+                  if (_isLoadingCats)
+                    const SizedBox(
+                      height: 200,
+                      child: Center(
+                          child: CircularProgressIndicator(
+                              color: Color(0xFF26842c))),
+                    )
+                  else
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: EdgeInsets.zero,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 15,
+                        mainAxisSpacing: 15,
+                        childAspectRatio: 1.0,
+                      ),
+                      itemCount: _categories.length,
+                      itemBuilder: (context, index) {
+                        final cat = _categories[index];
+                        return WidgetButton(
+                          onTap: () => Routers.goTO(context,
+                              toBody: CollectionView(
+                                  collectionId: cat.id.toString())),
+                          child: Card(
+                            elevation: 0.5,
+                            color: Colors.grey[50],
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(15),
+                              child: KskNetworkImage(
+                                cat.image,
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-              ],
+                        );
+                      },
+                    ),
+                ],
+              ),
             ),
-          ),
 
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-          // --- DYNAMIC SECTIONS ---
-          if (bestSeller != null) _buildDynamicSection(bestSeller, []),
+            // --- DYNAMIC SECTIONS ---
+            if (bestSeller != null) _buildDynamicSection(bestSeller, []),
 
-          if (badiBachat != null)
-            _buildDynamicSection(badiBachat, _bestSellerIds),
+            if (badiBachat != null)
+              _buildDynamicSection(badiBachat, _bestSellerIds),
 
-          for (var section in allCats)
-            if (section != bestSeller && section != badiBachat)
-              _buildDynamicSection(section, []),
+            for (var section in allCats)
+              if (section != bestSeller && section != badiBachat)
+                _buildDynamicSection(section, []),
 
-          // --- PREMIUM FOOTER ---
-          _buildPremiumFooter(),
-        ],
+            // --- PREMIUM FOOTER ---
+            _buildPremiumFooter(),
+          ],
+        ),
       ),
     );
   }

@@ -90,37 +90,35 @@ class _OrderViewState extends State<OrderView>
     super.build(context);
     final bool loggedIn = AuthController.isLoggedIn();
 
-    if (!loggedIn) {
-      return Container(
-        color: Colors.white,
-        child: _buildLoginPrompt(),
-      );
-    }
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
-      child: SafeArea(
-        child: DefaultTabController(
-          length: 4,
-          child: Builder(builder: (context) {
-            final tabController = DefaultTabController.of(context);
-            return Column(
-              children: [
-                _buildAdvancedHeader(),
-                _buildFilterChips(tabController),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      _buildOrderList(0),
-                      _buildOrderList(1),
-                      _buildOrderList(2),
-                      _buildOrderList(3),
-                    ],
-                  ),
+      child: Container(
+        color: const Color(0xffF9FBF9),
+        child: SafeArea(
+          child: !loggedIn
+              ? _buildLoginPrompt()
+              : DefaultTabController(
+                  length: 4,
+                  child: Builder(builder: (context) {
+                    final tabController = DefaultTabController.of(context);
+                    return Column(
+                      children: [
+                        _buildAdvancedHeader(),
+                        _buildFilterChips(tabController),
+                        Expanded(
+                          child: TabBarView(
+                            children: [
+                              _buildOrderList(0),
+                              _buildOrderList(1),
+                              _buildOrderList(2),
+                              _buildOrderList(3),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
                 ),
-              ],
-            );
-          }),
         ),
       ),
     );
@@ -128,59 +126,93 @@ class _OrderViewState extends State<OrderView>
 
   Widget _buildAdvancedHeader() {
     int activeCount = _filterOrders(1).length;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.withOpacity(0.04)),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          top: -50,
+          right: -30,
+          child: Container(
+            width: 200,
+            height: 200,
+            decoration: BoxDecoration(
+              color: Constants.baseColor.withOpacity(0.05),
+              shape: BoxShape.circle,
+            ),
+          ),
         ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        Positioned(
+          top: 40,
+          left: -20,
+          child: Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: Constants.baseColor.withOpacity(0.03),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          decoration: const BoxDecoration(
+            color: Colors.transparent,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                "My Orders",
-                style: GoogleFonts.outfit(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: Constants.baseColor,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: activeCount > 0
-                          ? Constants.baseColor
-                          : Colors.grey[300],
-                      shape: BoxShape.circle,
+                  Text(
+                    "My Orders",
+                    style: GoogleFonts.outfit(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      color: Constants.baseColor,
+                      letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    activeCount > 0
-                        ? "$activeCount Active"
-                        : "No active orders",
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey[600],
-                    ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Constants.baseColor,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          activeCount > 0
+                              ? "$activeCount ACTIVE"
+                              : "NO ACTIVE ORDERS",
+                          style: GoogleFonts.inter(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Order History",
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
+              _buildStatIndicator(),
             ],
           ),
-          _buildStatIndicator(),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -223,7 +255,7 @@ class _OrderViewState extends State<OrderView>
         return Container(
           height: 44,
           padding: const EdgeInsets.symmetric(vertical: 4),
-          color: Colors.white,
+          color: Colors.transparent,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
