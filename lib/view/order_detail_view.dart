@@ -243,43 +243,36 @@ class _OrderDetailViewState extends State<OrderDetailView> {
               ),
             ),
           ],
-          // SHIPROCKET CUSTOM TRACKING
-          ..._currentOrder.fulfillments
-              .where((f) =>
-                  f.trackingNumber != null && f.trackingNumber!.isNotEmpty)
-              .map((f) => Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          final url = Uri.parse(
-                              "https://krishibhandar.shiprocket.co/tracking/${f.trackingNumber}");
-                          if (await canLaunchUrl(url)) {
-                            await launchUrl(url,
-                                mode: LaunchMode.externalApplication);
-                          }
-                        },
-                        icon:
-                            const Icon(Icons.local_shipping_outlined, size: 16),
-                        label:
-                            Text("Track on Shiprocket (${f.trackingNumber})"),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.blue[800],
-                          side:
-                              BorderSide(color: Colors.blue[800]!, width: 1.5),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          textStyle: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  )),
+          // FORCED TEST TRACKING (User requested: 19041902964601 for 17TRACK)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  const awb = "19041902964601";
+                  final url = Uri.parse("https://t.17track.net/en#nums=$awb");
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  }
+                },
+                icon: const Icon(Icons.local_shipping_outlined, size: 16),
+                label: const Text("Track your Order (19041902964601)"),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFE91E63),
+                  side: const BorderSide(color: Color(0xFFE91E63), width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  textStyle: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

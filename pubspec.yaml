@@ -15,7 +15,6 @@ dependencies:
   cupertino_icons: ^1.0.8
   font_awesome_flutter: ^10.12.0
 
-  carousel_slider_plus: ^7.1.1
   http: ^1.6.0
   intl: ^0.20.2
   url_launcher: ^6.3.2
@@ -43,6 +42,7 @@ dependencies:
   flutter_dotenv: ^6.0.0
   flutter_svg: ^2.0.10+1
   google_fonts: ^8.0.2
+  carousel_slider: ^5.1.2
 
 dev_dependencies:
   flutter_test:

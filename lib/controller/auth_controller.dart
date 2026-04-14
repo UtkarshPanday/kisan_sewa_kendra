@@ -62,6 +62,7 @@ class AuthController {
       'address2': address2,
       'city': city,
       'state': state,
+      'name': name ?? '',
       'first_name': firstName ?? '',
       'last_name': lastName ?? '',
       'phone': phone ?? '',

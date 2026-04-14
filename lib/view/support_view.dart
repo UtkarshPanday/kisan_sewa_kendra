@@ -89,21 +89,32 @@ class _SupportViewState extends State<SupportView>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xffF9FBF9),
         body: Form(
           key: _formKey,
           child: SingleChildScrollView(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // ─── GRADIENT HEADER ───
                 _buildHeader(),
 
-                // ─── CONTACT FORM ───
-                SizedBox(height: 10),
-                _buildFormCard(),
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    children: [
+                      // ─── CONTACT FORM ───
+                      _buildFormCard(),
 
-                // ─── ADDRESS / LOCATION ───
-                _buildAddressCard(),
+                      const SizedBox(height: 16),
+
+                      // ─── ADDRESS / LOCATION ───
+                      _buildAddressCard(),
+
+                      const SizedBox(height: 30),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -121,10 +132,10 @@ class _SupportViewState extends State<SupportView>
         Container(
           width: double.infinity,
           padding: EdgeInsets.fromLTRB(
-            15,
-            MediaQuery.of(context).padding.top + 12,
-            15,
-            15,
+            16,
+            MediaQuery.of(context).padding.top + 16,
+            16,
+            24,
           ),
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -238,15 +249,24 @@ class _SupportViewState extends State<SupportView>
   //  CONTACT FORM
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildFormCard() {
-    return Card(
-      color: Colors.white,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Constants.baseColor.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Constants.baseColor.withValues(alpha: 0.05),
+          width: 1,
+        ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -427,15 +447,24 @@ class _SupportViewState extends State<SupportView>
   //  ADDRESS CARD
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildAddressCard() {
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Constants.baseColor.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Constants.baseColor.withValues(alpha: 0.05),
+          width: 1,
+        ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             Row(

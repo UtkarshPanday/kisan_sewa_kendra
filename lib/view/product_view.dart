@@ -1,8 +1,8 @@
-import 'package:carousel_slider_plus/carousel_slider_plus.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:kisan_sewa_kendra/components/products_grid.dart';
-import 'package:kisan_sewa_kendra/view/checkout/address_view.dart';
+import 'package:kisan_sewa_kendra/view/cart_view.dart';
 
 import '../components/ksk_appbar.dart';
 import '../components/network_image.dart';
@@ -207,9 +207,9 @@ class _ProductViewState extends State<ProductView>
             Stack(
               children: [
                 CarouselSlider(
-                  controller: _controller,
+                  carouselController: _controller,
                   options: CarouselOptions(
-                    aspectRatio: 1.1,
+                    aspectRatio: 1.0,
                     viewportFraction: 1,
                     autoPlay: _enableAutoPlay,
                     onPageChanged: (index, _) {
@@ -588,7 +588,7 @@ class _ProductViewState extends State<ProductView>
               child: SizedBox(
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     final variantId =
                         int.tryParse(variant.id.split('/').last) ?? 0;
                     final productId =
@@ -619,9 +619,17 @@ class _ProductViewState extends State<ProductView>
                       }
                     ];
 
-                    Routers.goTO(context,
-                        toBody: AddressView(
-                            cartItems: cartData, totalValue: price));
+                    await CartController.addToCart(
+                      variantId: variant.id,
+                      productId: widget.product.id,
+                      qty: 1,
+                      title: widget.product.title,
+                      price: variant.price,
+                      image: widget.product.image,
+                      variantTitle: variant.title,
+                    );
+                    if (!context.mounted) return;
+                    Routers.goTO(context, toBody: const CartView());
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Constants.baseColor,

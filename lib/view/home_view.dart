@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:kisan_sewa_kendra/view/support_view.dart';
 import 'package:kisan_sewa_kendra/view/policy_pages.dart';
@@ -57,11 +58,19 @@ class _MyHomePageState extends State<MyHomePage>
         return true; // Allow pop, exit app
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xffF9FBF9),
+        extendBodyBehindAppBar: false,
         appBar: _currentIndex == 0 ? const KskAppbar() : null,
         drawer: _buildModernDrawer(context),
         body: !_isDataLoaded
-            ? const Center(child: CircularProgressIndicator())
+            ? AnnotatedRegion<SystemUiOverlayStyle>(
+                value: SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  statusBarIconBrightness: Brightness.dark,
+                  statusBarBrightness: Brightness.light,
+                ),
+                child: const Center(child: CircularProgressIndicator()),
+              )
             : IndexedStack(
                 index: _currentIndex,
                 children: [

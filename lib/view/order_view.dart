@@ -91,34 +91,74 @@ class _OrderViewState extends State<OrderView>
     final bool loggedIn = AuthController.isLoggedIn();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
-      child: Container(
-        color: const Color(0xffF9FBF9),
-        child: SafeArea(
-          child: !loggedIn
-              ? _buildLoginPrompt()
-              : DefaultTabController(
-                  length: 4,
-                  child: Builder(builder: (context) {
-                    final tabController = DefaultTabController.of(context);
-                    return Column(
-                      children: [
-                        _buildAdvancedHeader(),
-                        _buildFilterChips(tabController),
-                        Expanded(
-                          child: TabBarView(
-                            children: [
-                              _buildOrderList(0),
-                              _buildOrderList(1),
-                              _buildOrderList(2),
-                              _buildOrderList(3),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  }),
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xffF9FBF9),
+        body: Stack(
+          children: [
+            // Background Layer (Covers the whole screen, including status bar)
+            Positioned.fill(
+              child: Container(color: const Color(0xffF9FBF9)),
+            ),
+
+            // Background Shapes (Allowed to bleed into status bar area for "transparent" effect)
+            Positioned(
+              top: -50,
+              right: -30,
+              child: Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  color: Constants.baseColor.withOpacity(0.05),
+                  shape: BoxShape.circle,
                 ),
+              ),
+            ),
+            Positioned(
+              top: 70, // Kept lower as previously requested
+              left: -20,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: Constants.baseColor.withOpacity(0.05),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+
+            // Main Content (Protected by SafeArea)
+            SafeArea(
+              child: !loggedIn
+                  ? _buildLoginPrompt()
+                  : DefaultTabController(
+                      length: 4,
+                      child: Builder(builder: (context) {
+                        final tabController = DefaultTabController.of(context);
+                        return Column(
+                          children: [
+                            _buildAdvancedHeader(),
+                            _buildFilterChips(tabController),
+                            Expanded(
+                              child: TabBarView(
+                                children: [
+                                  _buildOrderList(0),
+                                  _buildOrderList(1),
+                                  _buildOrderList(2),
+                                  _buildOrderList(3),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                    ),
+            ),
+          ],
         ),
       ),
     );
@@ -126,93 +166,64 @@ class _OrderViewState extends State<OrderView>
 
   Widget _buildAdvancedHeader() {
     int activeCount = _filterOrders(1).length;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Positioned(
-          top: -50,
-          right: -30,
-          child: Container(
-            width: 200,
-            height: 200,
-            decoration: BoxDecoration(
-              color: Constants.baseColor.withOpacity(0.05),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-        Positioned(
-          top: 40,
-          left: -20,
-          child: Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: Constants.baseColor.withOpacity(0.03),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-          decoration: const BoxDecoration(
-            color: Colors.transparent,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Text(
+                "My Orders",
+                style: GoogleFonts.outfit(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: Constants.baseColor,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
                 children: [
-                  Text(
-                    "My Orders",
-                    style: GoogleFonts.outfit(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
                       color: Constants.baseColor,
-                      letterSpacing: -0.5,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      activeCount > 0
+                          ? "$activeCount ACTIVE"
+                          : "NO ACTIVE ORDERS",
+                      style: GoogleFonts.inter(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Constants.baseColor,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          activeCount > 0
-                              ? "$activeCount ACTIVE"
-                              : "NO ACTIVE ORDERS",
-                          style: GoogleFonts.inter(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Order History",
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  Text(
+                    "Order History",
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[600],
+                    ),
                   ),
                 ],
               ),
-              _buildStatIndicator(),
             ],
           ),
-        ),
-      ],
+          _buildStatIndicator(),
+        ],
+      ),
     );
   }
 

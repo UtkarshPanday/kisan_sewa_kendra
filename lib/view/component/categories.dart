@@ -112,7 +112,7 @@ class _CategoriesState extends State<Categories>
                 ),
               ),
               Container(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                 decoration: const BoxDecoration(
                   color: Colors.transparent,
                 ),
@@ -164,25 +164,7 @@ class _CategoriesState extends State<Categories>
                         ),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(15),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Constants.baseColor.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.grid_view_rounded,
-                        color: Constants.baseColor,
-                        size: 22,
-                      ),
-                    ),
+                    _buildStatIndicator(),
                   ],
                 ),
               ),
@@ -218,12 +200,15 @@ class _CategoriesState extends State<Categories>
                                 Duration(milliseconds: 300 + (index * 50)),
                             tween: Tween(begin: 0.0, end: 1.0),
                             curve: Curves.easeOutCubic,
+                            child: RepaintBoundary(
+                              child: _buildCategoryCard(category),
+                            ),
                             builder: (context, value, child) {
                               return Transform.translate(
                                 offset: Offset(0, 20 * (1 - value)),
                                 child: Opacity(
                                   opacity: value,
-                                  child: _buildCategoryCard(category),
+                                  child: child,
                                 ),
                               );
                             },
@@ -242,7 +227,11 @@ class _CategoriesState extends State<Categories>
     }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
       child: Container(
         color: const Color(0xffF9FBF9),
         child: SafeArea(child: innerContent),
@@ -346,6 +335,38 @@ class _CategoriesState extends State<Categories>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Constants.baseColor.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _categories.length.toString(),
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Constants.baseColor,
+            ),
+          ),
+          Text(
+            "TOTAL",
+            style: GoogleFonts.inter(
+              fontSize: 7,
+              fontWeight: FontWeight.w900,
+              color: Constants.baseColor,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ],
       ),
     );
   }

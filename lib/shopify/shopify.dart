@@ -162,8 +162,8 @@ class ShopifyAPI {
                     'title': li['title'] ?? '',
                     'quantity': li['quantity'] ?? 0,
                     'price': li['originalUnitPriceSet']?['presentmentMoney']
-                            ?['amount']
-                        ?.toString() ??
+                                ?['amount']
+                            ?.toString() ??
                         '0.00',
                     'variant_title': li['variantTitle'] ?? '',
                     'variant_id':
@@ -184,9 +184,9 @@ class ShopifyAPI {
                   lastOrder['subtotal_price'] == '0') {
                 double sub = 0;
                 for (var item in lastOrder['line_items']) {
-                  sub += (double.tryParse(item['price']?.toString() ?? '0') ??
-                          0) *
-                      (item['quantity'] ?? 0);
+                  sub +=
+                      (double.tryParse(item['price']?.toString() ?? '0') ?? 0) *
+                          (item['quantity'] ?? 0);
                 }
                 lastOrder['subtotal_price'] = sub.toStringAsFixed(2);
               }

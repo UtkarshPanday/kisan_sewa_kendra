@@ -24,35 +24,6 @@ class KskNetworkImage extends StatefulWidget {
 }
 
 class _KskNetworkImageState extends State<KskNetworkImage> {
-  Future<File>? _svgFuture;
-  String? _lastUrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _initSvgFuture();
-  }
-
-  void _initSvgFuture() {
-    final cleanUrl = widget.imageUrl.trim();
-    final isSvg = cleanUrl.split('?').first.toLowerCase().endsWith('.svg');
-    if (isSvg && cleanUrl.startsWith("http")) {
-      _svgFuture = DefaultCacheManager().getSingleFile(cleanUrl);
-      _lastUrl = cleanUrl;
-    } else {
-      _svgFuture = null;
-      _lastUrl = null;
-    }
-  }
-
-  @override
-  void didUpdateWidget(KskNetworkImage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.imageUrl != widget.imageUrl) {
-      _initSvgFuture();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final cleanUrl = widget.imageUrl.trim();
@@ -60,23 +31,15 @@ class _KskNetworkImageState extends State<KskNetworkImage> {
       return _buildPlaceholder();
     }
 
-    if (_svgFuture != null) {
-      return FutureBuilder<File>(
-        future: _svgFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
-            return SvgPicture.file(
-              snapshot.data!,
-              height: widget.height,
-              width: widget.width,
-              fit: widget.fit ?? BoxFit.contain,
-            );
-          }
-          if (snapshot.hasError) {
-            return _buildPlaceholder();
-          }
-          return _buildShimmer();
-        },
+    final isSvg = cleanUrl.split('?').first.toLowerCase().endsWith('.svg');
+
+    if (isSvg) {
+      return SvgPicture.network(
+        cleanUrl,
+        height: widget.height,
+        width: widget.width,
+        fit: widget.fit ?? BoxFit.contain,
+        placeholderBuilder: (BuildContext context) => _buildShimmer(),
       );
     }
 

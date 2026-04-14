@@ -1,22 +1,17 @@
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../../controller/auth_controller.dart';
 import '../../controller/constants.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-import 'checkout_view.dart';
+import 'package:geocoding/geocoding.dart';
 
 class AddressView extends StatefulWidget {
-  final List<Map<String, dynamic>> cartItems;
-  final double totalValue;
-
-  const AddressView({
-    super.key,
-    required this.cartItems,
-    required this.totalValue,
-  });
+  const AddressView({super.key});
 
   @override
   State<AddressView> createState() => _AddressViewState();
@@ -36,10 +31,12 @@ class _AddressViewState extends State<AddressView> {
   bool _isPinLoading = false;
   bool _isProcessingCod = false;
   bool _isFetchingLocation = false;
-  
+
   List<Map<String, String>> _addressList = [];
   int? _selectedIndex;
   bool _isAddingAddress = false;
+  String? _savedName;
+  String? _savedPhone;
 
   @override
   void initState() {
@@ -55,21 +52,27 @@ class _AddressViewState extends State<AddressView> {
     if (mounted) {
       setState(() {
         _addressList = addresses;
+        _savedName = name;
+        _savedPhone = phone;
         if (_addressList.isNotEmpty) {
           _selectedIndex = 0;
           _isAddingAddress = false;
         } else {
           _isAddingAddress = true;
-          // Pre-fill name and phone for the first address
-          if (name != null && name.isNotEmpty) {
-             final parts = name.split(' ');
-             _firstNameController.text = parts.first;
-             _lastNameController.text = parts.length > 1 ? parts.sublist(1).join(' ') : '';
-          }
-          if (phone != null) _phoneController.text = phone;
+          _preFillDetails();
         }
       });
     }
+  }
+
+  void _preFillDetails() {
+    if (_savedName != null && _savedName!.isNotEmpty) {
+      final parts = _savedName!.split(' ');
+      _firstNameController.text = parts.first;
+      _lastNameController.text =
+          parts.length > 1 ? parts.sublist(1).join(' ') : '';
+    }
+    if (_savedPhone != null) _phoneController.text = _savedPhone!;
   }
 
   @override
@@ -120,7 +123,9 @@ class _AddressViewState extends State<AddressView> {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location services are disabled.')));
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Location services are disabled.')));
         return;
       }
 
@@ -128,54 +133,54 @@ class _AddressViewState extends State<AddressView> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location permissions are denied.')));
+          if (mounted)
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Location permissions are denied.')));
           return;
         }
       }
-      
-      if (permission == LocationPermission.deniedForever) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location permissions are permanently denied, we cannot request permissions.')));
-        return;
-      } 
 
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text(
+                  'Location permissions are permanently denied, we cannot request permissions.')));
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      List<Placemark> placemarks =
+          await placemarkFromCoordinates(position.latitude, position.longitude);
 
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks[0];
         if (mounted) {
           setState(() {
-            _address1Controller.text = '${place.name}, ${place.subLocality}'.trim().replaceAll(RegExp(r'^,\s*'), '');
+            _address1Controller.text = '${place.name}, ${place.subLocality}'
+                .trim()
+                .replaceAll(RegExp(r'^,\s*'), '');
             _address2Controller.text = '${place.locality}';
-            _cityController.text = place.subAdministrativeArea ?? place.locality ?? '';
+            _cityController.text =
+                place.subAdministrativeArea ?? place.locality ?? '';
             _stateController.text = place.administrativeArea ?? '';
-            
+
             if (place.postalCode != null && place.postalCode!.isNotEmpty) {
-               _pincodeController.text = place.postalCode!;
-               _fetchPincodeData(place.postalCode!); // Auto-fetch city/state to be sure
+              _pincodeController.text = place.postalCode!;
+              _fetchPincodeData(
+                  place.postalCode!); // Auto-fetch city/state to be sure
             }
           });
         }
       }
     } catch (e) {
       debugPrint('Error getting location: $e');
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to get location: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to get location: $e')));
     } finally {
       if (mounted) setState(() => _isFetchingLocation = false);
     }
-  }
-
-  void _navigateToCheckout(Map<String, String> addressData) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CheckoutView(
-          cartItems: widget.cartItems,
-          totalValue: widget.totalValue,
-          selectedAddress: addressData,
-        ),
-      ),
-    );
   }
 
   void _proceed() {
@@ -184,7 +189,7 @@ class _AddressViewState extends State<AddressView> {
       _saveAndProceed();
     } else {
       if (_selectedIndex == null) return;
-      _navigateToCheckout(_addressList[_selectedIndex!]);
+      Navigator.pop(context, _addressList[_selectedIndex!]);
     }
   }
 
@@ -197,17 +202,21 @@ class _AddressViewState extends State<AddressView> {
       'state': _stateController.text.trim(),
       'first_name': _firstNameController.text.trim(),
       'last_name': _lastNameController.text.trim(),
+      'name':
+          "${_firstNameController.text.trim()} ${_lastNameController.text.trim()}"
+              .trim(),
       'phone': _phoneController.text.trim(),
     };
 
-    setState(() => _isProcessingCod = true); // Using this for general loading
-    
+    setState(() => _isProcessingCod = true);
+
     await AuthController.saveAddress(
       pincode: addr['pincode']!,
       address1: addr['address1']!,
       address2: addr['address2']!,
       city: addr['city']!,
       state: addr['state']!,
+      name: addr['name'],
       firstName: addr['first_name'],
       lastName: addr['last_name'],
       phone: addr['phone'],
@@ -218,15 +227,15 @@ class _AddressViewState extends State<AddressView> {
     if (mounted) {
       setState(() {
         _addressList = addresses;
-        _selectedIndex = 0; 
+        _selectedIndex = 0;
         _isAddingAddress = false;
         _isProcessingCod = false;
       });
-      _navigateToCheckout(addr);
+
+      // Always pop back to the caller
+      Navigator.pop(context, addr);
     }
   }
-
-
 
   Widget _buildField({
     required TextEditingController controller,
@@ -243,333 +252,478 @@ class _AddressViewState extends State<AddressView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: TextStyle(
-                fontWeight: FontWeight.w600,
+            style: GoogleFonts.inter(
+                fontWeight: FontWeight.w700,
                 fontSize: 13,
-                color: Colors.grey.shade700)),
-        const SizedBox(height: 8),
+                color: const Color(0xFF1E1E1E))),
+        const SizedBox(height: 10),
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
           inputFormatters: inputFormatters,
           readOnly: readOnly,
           onChanged: onChanged,
+          style: GoogleFonts.inter(
+              fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey.shade300, fontSize: 14),
+            hintStyle: GoogleFonts.inter(color: Colors.grey[400], fontSize: 14),
             suffixIcon: suffix,
             filled: true,
-            fillColor: readOnly ? Colors.grey.shade100 : Colors.grey.shade50,
+            fillColor: readOnly ? Colors.grey[100] : Colors.white,
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade200)),
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey.withOpacity(0.1))),
             enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade200)),
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey.withOpacity(0.1))),
             focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(color: Constants.baseColor, width: 2)),
             errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.red)),
-            focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.red, width: 2)),
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Colors.redAccent)),
           ),
           validator: validator ??
               (v) => (v == null || v.isEmpty) ? 'This field is required' : null,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
       ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Select Address',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.white,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_rounded,
-              color: Colors.grey.shade700, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_isAddingAddress) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Scaffold(
+        backgroundColor: const Color(0xffF9FBF9),
+        body: Stack(
+          children: [
+            SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                  16, MediaQuery.of(context).padding.top + 90, 16, 120),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('New Delivery Address',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 17,
-                            color: Colors.grey.shade900)),
-                    if (_addressList.isNotEmpty)
-                      IconButton(
-                        onPressed: () => setState(() => _isAddingAddress = false),
-                        icon: const Icon(Icons.close_rounded),
+                    if (_isAddingAddress) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('New Delivery Address',
+                              style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 18,
+                                  color: const Color(0xFF1E1E1E))),
+                          if (_addressList.isNotEmpty)
+                            IconButton(
+                              onPressed: () =>
+                                  setState(() => _isAddingAddress = false),
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                        ],
                       ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildField(
-                        controller: _firstNameController,
-                        label: 'First Name',
-                        hint: 'Yash',
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildField(
+                              controller: _firstNameController,
+                              label: 'First Name',
+                              hint: 'John',
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildField(
+                              controller: _lastNameController,
+                              label: 'Last Name',
+                              hint: 'Doe',
+                            ),
+                          ),
+                        ],
+                      ),
+                      _buildField(
+                        controller: _phoneController,
+                        label: 'Phone Number',
+                        hint: 'Enter Phone Number',
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(10)
+                        ],
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'Required';
+                          if (v == null || v.isEmpty)
+                            return 'Please enter phone number';
+                          if (v.length != 10)
+                            return 'Enter valid 10-digit number';
                           return null;
                         },
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildField(
-                        controller: _lastNameController,
-                        label: 'Last Name',
-                        hint: 'Sarankar',
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'Required';
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                _buildField(
-                  controller: _phoneController,
-                  label: 'Phone Number',
-                  hint: '9876543210',
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  validator: (v) {
-                    if (v == null || v.isEmpty)
-                      return 'Please enter phone number';
-                    if (v.length != 10) return 'Enter valid 10-digit number';
-                    return null;
-                  },
-                ),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _isFetchingLocation ? null : _getCurrentLocation,
-                    icon: _isFetchingLocation
-                        ? SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Constants.baseColor))
-                        : Icon(Icons.my_location_rounded,
-                            size: 18, color: Constants.baseColor),
-                    label: Text(
-                      _isFetchingLocation
-                          ? 'Locating...'
-                          : 'Use Current Location',
-                      style: TextStyle(
-                          color: Constants.baseColor,
-                          fontWeight: FontWeight.w600),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(
-                          color: Constants.baseColor.withOpacity(0.5)),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _buildField(
-                  controller: _pincodeController,
-                  label: 'Pincode',
-                  hint: '411001',
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  suffix: _isPinLoading
-                      ? Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Constants.baseColor)),
-                        )
-                      : null,
-                  onChanged: (v) {
-                    if (v.length == 6) _fetchPincodeData(v);
-                  },
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Please enter pincode';
-                    if (v.length != 6) return 'Pincode must be 6 digits';
-                    return null;
-                  },
-                ),
-                _buildField(
-                  controller: _address1Controller,
-                  label: 'Address Line 1',
-                  hint: 'House no., Street, Area',
-                ),
-                _buildField(
-                  controller: _address2Controller,
-                  label: 'Address Line 2 (Optional)',
-                  hint: 'Landmark, Colony, etc.',
-                  validator: (_) => null,
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildField(
-                        controller: _cityController,
-                        label: 'City / District',
-                        hint: 'Pune',
-                        readOnly: _cityController.text.isNotEmpty,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildField(
-                        controller: _stateController,
-                        label: 'State',
-                        hint: 'Maharashtra',
-                        readOnly: _stateController.text.isNotEmpty,
-                      ),
-                    ),
-                  ],
-                ),
-              ] else ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Delivery Address',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 17,
-                            color: Colors.grey.shade900)),
-                    TextButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _firstNameController.clear();
-                          _lastNameController.clear();
-                          _address1Controller.clear();
-                          _address2Controller.clear();
-                          _pincodeController.clear();
-                          _cityController.clear();
-                          _stateController.clear();
-                          _isAddingAddress = true;
-                        });
-                      },
-                      icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                      label: const Text('Add New', style: TextStyle(fontWeight: FontWeight.bold)),
-                      style: TextButton.styleFrom(foregroundColor: Constants.baseColor),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _addressList.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final addr = _addressList[index];
-                    final isSelected = _selectedIndex == index;
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedIndex = index),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isSelected ? Constants.baseColor.withOpacity(0.03) : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isSelected ? Constants.baseColor : Colors.grey.shade200,
-                            width: isSelected ? 2 : 1,
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed:
+                              _isFetchingLocation ? null : _getCurrentLocation,
+                          icon: _isFetchingLocation
+                              ? SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Constants.baseColor))
+                              : Icon(Icons.my_location_rounded,
+                                  size: 18, color: Constants.baseColor),
+                          label: Text(
+                            _isFetchingLocation
+                                ? 'Locating...'
+                                : 'Use Current Location',
+                            style: GoogleFonts.inter(
+                                color: Constants.baseColor,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                                color: Constants.baseColor.withOpacity(0.3)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            backgroundColor:
+                                Constants.baseColor.withOpacity(0.04),
                           ),
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
-                              color: isSelected ? Constants.baseColor : Colors.grey.shade300,
-                              size: 22,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildField(
+                        controller: _pincodeController,
+                        label: 'Pincode',
+                        hint: '411001',
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
+                        suffix: _isPinLoading
+                            ? Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Constants.baseColor)),
+                              )
+                            : null,
+                        onChanged: (v) {
+                          if (v.length == 6) _fetchPincodeData(v);
+                        },
+                      ),
+                      _buildField(
+                        controller: _address1Controller,
+                        label: 'Address Line 1',
+                        hint: 'House no., Street, Area',
+                      ),
+                      _buildField(
+                        controller: _address2Controller,
+                        label: 'Address Line 2 (Optional)',
+                        hint: 'Landmark, Colony, etc.',
+                        validator: (_) => null,
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildField(
+                              controller: _cityController,
+                              label: 'City / District',
+                              hint: 'Pune',
+                              readOnly: _cityController.text.isNotEmpty,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildField(
+                              controller: _stateController,
+                              label: 'State',
+                              hint: 'Maharashtra',
+                              readOnly: _stateController.text.isNotEmpty,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Delivery Address',
+                              style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 18,
+                                  color: const Color(0xFF1E1E1E))),
+                          TextButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _firstNameController.clear();
+                                _lastNameController.clear();
+                                _address1Controller.clear();
+                                _address2Controller.clear();
+                                _pincodeController.clear();
+                                _cityController.clear();
+                                _stateController.clear();
+                                _preFillDetails();
+                                _isAddingAddress = true;
+                              });
+                            },
+                            icon: const Icon(Icons.add_circle_outline_rounded,
+                                size: 18),
+                            label: Text('Add New',
+                                style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.w700)),
+                            style: TextButton.styleFrom(
+                                foregroundColor: Constants.baseColor),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      ListView.separated(
+                        shrinkWrap: true,
+                        padding: EdgeInsets.zero,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _addressList.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final addr = _addressList[index];
+                          final isSelected = _selectedIndex == index;
+                          return GestureDetector(
+                            onTap: () => setState(() => _selectedIndex = index),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.white.withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? Constants.baseColor
+                                      : Colors.grey.withOpacity(0.1),
+                                  width: isSelected ? 2 : 1,
+                                ),
+                                boxShadow: [
+                                  if (isSelected)
+                                    BoxShadow(
+                                      color:
+                                          Constants.baseColor.withOpacity(0.1),
+                                      blurRadius: 15,
+                                      offset: const Offset(0, 8),
+                                    ),
+                                ],
+                              ),
+                              child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    addr['name'] ?? '',
-                                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+                                  Icon(
+                                    isSelected
+                                        ? Icons.check_circle_rounded
+                                        : Icons.circle_outlined,
+                                    color: isSelected
+                                        ? Constants.baseColor
+                                        : Colors.grey.withOpacity(0.3),
+                                    size: 20,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${addr['address1']}, ${addr['address2'] ?? ""}',
-                                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13, height: 1.4),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          addr['name'] ?? '',
+                                          style: GoogleFonts.inter(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 15,
+                                              color: const Color(0xFF1E1E1E)),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          '${addr['address1']}, ${addr['address2'] ?? ""}',
+                                          style: GoogleFonts.inter(
+                                              color: Colors.grey[600],
+                                              fontSize: 13,
+                                              height: 1.4),
+                                        ),
+                                        Text(
+                                          '${addr['city']}, ${addr['state']} - ${addr['pincode']}',
+                                          style: GoogleFonts.inter(
+                                              color: Colors.grey[600],
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  Text(
-                                    '${addr['city']}, ${addr['state']} - ${addr['pincode']}',
-                                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                                  IconButton(
+                                    onPressed: () async {
+                                      await AuthController
+                                          .removeAddressFromList(index);
+                                      _loadAddresses();
+                                    },
+                                    icon: Icon(Icons.delete_outline_rounded,
+                                        size: 20, color: Colors.red[300]),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
                                   ),
                                 ],
                               ),
                             ),
-                            IconButton(
-                              onPressed: () async {
-                                await AuthController.removeAddressFromList(index);
-                                _loadAddresses();
-                              },
-                              icon: Icon(Icons.delete_outline_rounded, size: 20, color: Colors.red.shade300),
-                            ),
-                          ],
+                          );
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            // Glassmorphism App Bar
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: _buildAdvancedHeader(),
+            ),
+          ],
+        ),
+        bottomNavigationBar: _buildActionBottomBar(),
+      ),
+    );
+  }
+
+  Widget _buildAdvancedHeader() {
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(
+              16, MediaQuery.of(context).padding.top + 10, 16, 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.85),
+            border: Border(
+              bottom: BorderSide(color: Colors.grey.withOpacity(0.1)),
+            ),
+          ),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Constants.baseColor.withOpacity(0.06),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.arrow_back_rounded,
+                    size: 22,
+                    color: Constants.baseColor,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 15),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "Select Address",
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF1E1E1E),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Icon(Icons.eco_rounded,
+                          size: 12, color: Constants.baseColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        "Pure Organic Agriculture",
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Constants.baseColor,
                         ),
                       ),
-                    );
-                  },
-                ),
-              ],
-
-              const SizedBox(height: 100),
+                    ],
+                  ),
+                ],
+              ),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.fromLTRB(20, 15, 20, 30),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))
-          ],
-        ),
-        child: ElevatedButton(
-          onPressed: (_selectedIndex == null && !_isAddingAddress) || _isProcessingCod ? null : _proceed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Constants.baseColor,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+    );
+  }
+
+  Widget _buildActionBottomBar() {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+          20, 15, 20, MediaQuery.of(context).padding.bottom + 15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 20,
+              offset: const Offset(0, -5))
+        ],
+      ),
+      child: InkWell(
+        onTap: (_selectedIndex == null && !_isAddingAddress) || _isProcessingCod
+            ? null
+            : _proceed,
+        child: Container(
+          height: 56,
+          decoration: BoxDecoration(
+            color: (_selectedIndex == null && !_isAddingAddress) ||
+                    _isProcessingCod
+                ? Colors.grey[300]
+                : Constants.baseColor,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              if (!((_selectedIndex == null && !_isAddingAddress) ||
+                  _isProcessingCod))
+                BoxShadow(
+                  color: Constants.baseColor.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+            ],
           ),
-          child: _isProcessingCod 
-            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-            : const Text('CONTINUE TO CHECKOUT', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+          child: Center(
+            child: _isProcessingCod
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2.5))
+                : Text(
+                    _isAddingAddress ? 'SAVE & CONFIRM' : 'CONFIRM ADDRESS',
+                    style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        color: Colors.white,
+                        letterSpacing: 0.5),
+                  ),
+          ),
         ),
       ),
     );

@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:kisan_sewa_kendra/generated/assets.dart';
 
 import '../controller/constants.dart';
@@ -32,7 +33,7 @@ class KskAppbar extends StatefulWidget implements PreferredSizeWidget {
   State<KskAppbar> createState() => _KskAppbarState();
 
   @override
-  Size get preferredSize => const Size.fromHeight(135);
+  Size get preferredSize => const Size.fromHeight(125);
 }
 
 class _KskAppbarState extends State<KskAppbar> {
@@ -73,34 +74,38 @@ class _KskAppbarState extends State<KskAppbar> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey.withOpacity(0.1),
+            width: 1,
           ),
-        ],
+        ),
       ),
       child: AppBar(
         elevation: 0,
         scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+        ),
+        surfaceTintColor: Colors.white,
         backgroundColor: Colors.white,
-        centerTitle: false, // DO NOT center logo horizontally
-        toolbarHeight: 85,
+        centerTitle: false,
+        toolbarHeight: 75,
         leading: Builder(
           builder: (context) => IconButton(
             padding: const EdgeInsets.only(left: 12),
-            icon: Icon(Icons.menu_rounded, color: Constants.baseColor, size: 32), // Increased size
+            icon: Icon(Icons.menu_rounded,
+                color: Constants.baseColor, size: 32), // Increased size
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
         title: Container(
-          height: 85,
           alignment: Alignment.centerLeft, // Keep left, but center vertically
           child: Image.asset(
-            Assets.assetsLogo,
-            height: 60,
+            "assets/logo-removebg-preview.png",
+            height: 50,
             fit: BoxFit.contain,
           ),
         ),
@@ -110,19 +115,25 @@ class _KskAppbarState extends State<KskAppbar> {
               padding: const EdgeInsets.only(right: 8),
               child: PopupMenuButton<String>(
                 icon: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: Constants.baseColor.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Constants.baseColor.withOpacity(0.1)),
+                    border:
+                        Border.all(color: Constants.baseColor.withOpacity(0.1)),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.language_rounded, size: 16, color: Constants.baseColor),
+                      Icon(Icons.language_rounded,
+                          size: 16, color: Constants.baseColor),
                       const SizedBox(width: 4),
                       Text(
                         Constants.lang.toUpperCase(),
-                        style: TextStyle(color: Constants.baseColor, fontSize: 11, fontWeight: FontWeight.w900),
+                        style: TextStyle(
+                            color: Constants.baseColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900),
                       ),
                     ],
                   ),
@@ -148,25 +159,33 @@ class _KskAppbarState extends State<KskAppbar> {
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: badges.Badge(
-              badgeContent: Text('$_cartCount', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+              badgeContent: Text('$_cartCount',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold)),
               position: badges.BadgePosition.topEnd(top: -4, end: -4),
               showBadge: _cartCount > 0,
-              badgeStyle: badges.BadgeStyle(badgeColor: Constants.baseColor, padding: const EdgeInsets.all(4)),
+              badgeStyle: badges.BadgeStyle(
+                  badgeColor: Constants.baseColor,
+                  padding: const EdgeInsets.all(4)),
               child: InkWell(
                 onTap: () => Routers.goTO(context, toBody: const CartView()),
-                child: Icon(Icons.shopping_bag_outlined, color: Constants.baseColor, size: 28),
+                child: Icon(Icons.shopping_bag_outlined,
+                    color: Constants.baseColor, size: 28),
               ),
             ),
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(50),
+          preferredSize: const Size.fromHeight(45),
           child: Container(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: WidgetButton(
-              onTap: () => showSearch(context: context, delegate: CustomSearchDelegate()),
+              onTap: () => showSearch(
+                  context: context, delegate: CustomSearchDelegate()),
               child: Container(
-                height: 48,
+                height: 42,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF7F7F7),
@@ -175,11 +194,15 @@ class _KskAppbarState extends State<KskAppbar> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.search_rounded, color: Colors.grey[500], size: 20),
+                    Icon(Icons.search_rounded,
+                        color: Colors.grey[500], size: 20),
                     const SizedBox(width: 12),
                     Text(
                       "Search for products...",
-                      style: TextStyle(color: Colors.grey[400], fontSize: 14, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
@@ -196,7 +219,8 @@ class CustomSearchDelegate extends SearchDelegate<String> {
   @override
   List<Widget>? buildActions(BuildContext context) {
     return [
-      IconButton(icon: const Icon(Icons.clear_rounded), onPressed: () => query = ''),
+      IconButton(
+          icon: const Icon(Icons.clear_rounded), onPressed: () => query = ''),
     ];
   }
 
@@ -216,7 +240,8 @@ class CustomSearchDelegate extends SearchDelegate<String> {
   @override
   Widget buildSuggestions(BuildContext context) {
     return FutureBuilder<List<ProductModel>>(
-      future: Shopify.fetchSearchResults(context, query: query.isEmpty ? "organic" : query), 
+      future: Shopify.fetchSearchResults(context,
+          query: query.isEmpty ? "organic" : query),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -224,7 +249,8 @@ class CustomSearchDelegate extends SearchDelegate<String> {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(child: Text("Search for your favorite products"));
         }
-        return _buildProductList(context, snapshot.data!, query.isEmpty ? "Top Suggestions" : "Results for '$query'");
+        return _buildProductList(context, snapshot.data!,
+            query.isEmpty ? "Top Suggestions" : "Results for '$query'");
       },
     );
   }
@@ -244,16 +270,22 @@ class CustomSearchDelegate extends SearchDelegate<String> {
     );
   }
 
-  Widget _buildProductList(BuildContext context, List<ProductModel> products, [String? title]) {
+  Widget _buildProductList(BuildContext context, List<ProductModel> products,
+      [String? title]) {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: products.length + (title != null ? 1 : 0),
-      separatorBuilder: (context, index) => const Divider(height: 24, color: Color(0xFFF0F0F0)),
+      separatorBuilder: (context, index) =>
+          const Divider(height: 24, color: Color(0xFFF0F0F0)),
       itemBuilder: (context, index) {
         if (title != null && index == 0) {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+            child: Text(title,
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5)),
           );
         }
         final product = products[title != null ? index - 1 : index];
@@ -271,13 +303,22 @@ class CustomSearchDelegate extends SearchDelegate<String> {
               child: KskNetworkImage(product.image ?? '', fit: BoxFit.contain),
             ),
           ),
-          title: Text(product.title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+          title: Text(product.title,
+              style:
+                  const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text("${Constants.inr}${product.variants.isNotEmpty ? product.variants.first.price : '0'}", style: TextStyle(color: Constants.baseColor, fontWeight: FontWeight.w900, fontSize: 15)),
+            child: Text(
+                "${Constants.inr}${product.variants.isNotEmpty ? product.variants.first.price : '0'}",
+                style: TextStyle(
+                    color: Constants.baseColor,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15)),
           ),
-          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
-          onTap: () => Routers.goTO(context, toBody: ProductView(product: product)),
+          trailing: const Icon(Icons.arrow_forward_ios_rounded,
+              size: 14, color: Colors.grey),
+          onTap: () =>
+              Routers.goTO(context, toBody: ProductView(product: product)),
         );
       },
     );
