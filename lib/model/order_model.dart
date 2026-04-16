@@ -80,6 +80,19 @@ class OrderModel {
     return 'Order Placed';
   }
 
+  bool get hasTrackingNumber {
+    for (var f in fulfillments) {
+      if (f.trackingNumber != null && f.trackingNumber!.trim().isNotEmpty) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool get isCancellable {
+    return cancelledAt == null && !hasTrackingNumber && trackingStatus != 'Cancelled';
+  }
+
   String get formattedDate {
     if (createdAt.isEmpty) return '';
     try {

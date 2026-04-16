@@ -53,20 +53,24 @@ class _KskAppbarState extends State<KskAppbar> {
   }
 
   Future<void> _fetchCartCount() async {
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-      String? cart = await Pref.getPref(PrefKey.cart);
-      List<dynamic> cartList;
-      if (cart == null) {
-        cartList = [];
-      } else {
-        cartList = jsonDecode(cart);
-      }
-      if (mounted) {
-        setState(() {
-          _cartCount = cartList.length;
-        });
-      }
+    _updateCartCount();
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _updateCartCount();
     });
+  }
+
+  Future<void> _updateCartCount() async {
+    String? cart = await Pref.getPref(PrefKey.cart);
+    int count = 0;
+    if (cart != null) {
+      List<dynamic> cartList = jsonDecode(cart);
+      count = cartList.length;
+    }
+    if (mounted) {
+      setState(() {
+        _cartCount = count;
+      });
+    }
   }
 
   @override

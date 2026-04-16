@@ -1,11 +1,16 @@
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kisan_sewa_kendra/components/products_grid.dart';
+import 'package:kisan_sewa_kendra/controller/constants.dart';
+import 'package:kisan_sewa_kendra/shopify/shopify.dart';
 
-import '../controller/constants.dart';
-import '../shopify/shopify.dart';
+import '../controller/pref.dart';
+import '../view/cart_view.dart';
+import '../controller/routers.dart';
+import 'dart:async';
 
 class CollectionView extends StatefulWidget {
   final String collectionId;
@@ -25,11 +30,59 @@ class _CollectionViewState extends State<CollectionView>
 
   final GlobalKey<ProductsGridState> _gridKey = GlobalKey<ProductsGridState>();
 
+  int _cartItemCount = 0;
+  double _cartTotal = 0;
+  Timer? _cartTimer;
+
   @override
   void initState() {
     super.initState();
     _title = widget.title ?? '';
+    _startCartTimer();
     Future.delayed(Duration.zero, _init);
+  }
+
+  void _startCartTimer() {
+    _updateCartSummary();
+    _cartTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      _updateCartSummary();
+    });
+  }
+
+  @override
+  void dispose() {
+    _cartTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _updateCartSummary() async {
+    String? cart = await Pref.getPref(PrefKey.cart);
+    if (cart != null) {
+      List<dynamic> cartList = jsonDecode(cart);
+      double total = 0;
+      int count = 0;
+      for (var item in cartList) {
+        double price = double.tryParse(
+                item['price'].toString().replaceAll(RegExp(r'[^\d.]'), '')) ??
+            0;
+        int qty = int.tryParse(item['qty'].toString()) ?? 0;
+        total += (price * qty);
+        count += qty;
+      }
+      if (mounted && (_cartItemCount != count || _cartTotal != total)) {
+        setState(() {
+          _cartItemCount = count;
+          _cartTotal = total;
+        });
+      }
+    } else {
+      if (mounted && _cartItemCount != 0) {
+        setState(() {
+          _cartItemCount = 0;
+          _cartTotal = 0;
+        });
+      }
+    }
   }
 
   _init() async {
@@ -54,60 +107,30 @@ class _CollectionViewState extends State<CollectionView>
         statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xffF9FBF9),
         body: Stack(
           children: [
-            // Background Layer
-            Positioned.fill(
-              child: Container(color: const Color(0xffF9FBF9)),
-            ),
-
             // Background Shapes
             Positioned(
               top: -50,
               right: -30,
-              child: Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Constants.baseColor.withOpacity(0.04),
-                  shape: BoxShape.circle,
-                ),
-              ),
+              child: _buildShape(200, 0.04),
             ),
             Positioned(
               top: 220,
               left: -40,
-              child: Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Constants.baseColor.withOpacity(0.03),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 100,
-              right: -20,
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Constants.baseColor.withOpacity(0.02),
-                  shape: BoxShape.circle,
-                ),
-              ),
+              child: _buildShape(120, 0.03),
             ),
 
-            // Products Grid — starts right below the header
-            Padding(
-              padding: EdgeInsets.only(top: topPad + 56),
-              child: ProductsGrid(
-                key: _gridKey,
-                isFilter: false,
-                id: widget.collectionId,
-                shrinkWrap: false,
+            // Products Grid — takes the main space
+            Positioned.fill(
+              child: Padding(
+                padding: EdgeInsets.only(top: topPad + 66),
+                child: ProductsGrid(
+                  key: _gridKey,
+                  isFilter: false,
+                  id: widget.collectionId,
+                  shrinkWrap: false,
+                ),
               ),
             ),
 
@@ -120,11 +143,24 @@ class _CollectionViewState extends State<CollectionView>
             ),
           ],
         ),
+
+      ),
+    );
+  }
+
+  Widget _buildShape(double size, double opacity) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Constants.baseColor.withOpacity(opacity),
+        shape: BoxShape.circle,
       ),
     );
   }
 
   /// Frosted glass header with back button and sort
+
   Widget _buildFrostedHeader(double topPad) {
     return ClipRect(
       child: BackdropFilter(
@@ -239,6 +275,91 @@ class _CollectionViewState extends State<CollectionView>
         ),
         child:
             Icon(Icons.swap_vert_rounded, size: 20, color: Constants.baseColor),
+      ),
+    );
+  }
+
+  Widget _buildFloatingCart() {
+    if (_cartItemCount == 0) return const SizedBox.shrink();
+
+    return Positioned(
+      bottom: 25,
+      left: 15,
+      right: 15,
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.mediumImpact();
+          Routers.goTO(context, toBody: const CartView());
+        },
+        child: Container(
+          height: 60,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Constants.baseColor,
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: Constants.baseColor.withOpacity(0.35),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              )
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Info side
+              Row(
+                children: [
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "${_cartItemCount} ${_cartItemCount > 1 ? 'ITEMS' : 'ITEM'}",
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      Text(
+                        "${Constants.inr}${_cartTotal.toStringAsFixed(0)}",
+                        style: GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              // Action side
+              Row(
+                children: [
+                  Text(
+                    "VIEW CART",
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.shopping_basket_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

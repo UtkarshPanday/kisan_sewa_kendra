@@ -535,12 +535,21 @@ class ShopifyAPI {
         "email": shippingAddress['email'] ?? "",
         "phone": shippingAddress['phone'] ?? "",
         "note_attributes": [
-          {"name": "payment_id", "value": paymentId ?? (isCod ? "COD" : "Online")},
+          {
+            "name": "payment_id",
+            "value": paymentId ?? (isCod ? "COD" : "Online")
+          },
           {"name": "channel", "value": "Mobile App"}
         ],
         "shipping_address": {
-          "first_name": shippingAddress['name']?.toString().split(' ').first ?? '',
-          "last_name": shippingAddress['name']?.toString().split(' ').skip(1).join(' ') ?? '',
+          "first_name":
+              shippingAddress['name']?.toString().split(' ').first ?? '',
+          "last_name": shippingAddress['name']
+                  ?.toString()
+                  .split(' ')
+                  .skip(1)
+                  .join(' ') ??
+              '',
           "address1": shippingAddress['address1'] ?? "",
           "address2": shippingAddress['address2'] ?? "",
           "city": shippingAddress['city'] ?? "",
@@ -577,6 +586,24 @@ class ShopifyAPI {
       debugPrint("createOrder Overall Error: $e");
     }
     return {};
+  }
+
+  static Future<bool> cancelOrder(String orderId) async {
+    try {
+      final numericId =
+          orderId.contains('gid://') ? orderId.split('/').last : orderId;
+      var res = await http.post(
+        Uri.parse("$_baseUrl/orders/$numericId/cancel.json"),
+        headers: _header,
+      );
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        return true;
+      }
+      debugPrint("Cancel Order Error ${res.statusCode}: ${res.body}");
+    } catch (e) {
+      debugPrint("cancelOrder Error: $e");
+    }
+    return false;
   }
 }
 
