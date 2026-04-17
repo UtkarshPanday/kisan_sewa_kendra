@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:kisan_sewa_kendra/components/widget_button.dart';
 import 'package:kisan_sewa_kendra/view/cart_view.dart';
 
 import '../controller/constants.dart';
@@ -12,10 +13,11 @@ import '../controller/cart_controller.dart';
 import '../utils/firebase_events.dart';
 import '../utils/meta_events.dart';
 import 'network_image.dart';
-import 'widget_button.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import '../controller/pref.dart';
+import 'cart_summary_bar.dart';
 
 class ProductsGrid extends StatefulWidget {
   final String id;
@@ -47,60 +49,11 @@ class ProductsGridState extends State<ProductsGrid>
   @override
   void initState() {
     super.initState();
-    _startCartTimer();
     Future.delayed(Duration.zero, _init);
-  }
-
-  void _startCartTimer() {
-    _updateCartSummary();
-    _cartTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      _updateCartSummary();
-    });
-  }
-
-  @override
-  void dispose() {
-    _cartTimer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _updateCartSummary() async {
-    String? cart = await Pref.getPref(PrefKey.cart);
-    if (cart != null) {
-      List<dynamic> cartList = jsonDecode(cart);
-      double total = 0;
-      int count = 0;
-      for (var item in cartList) {
-        double price = double.tryParse(
-                item['price'].toString().replaceAll(RegExp(r'[^\d.]'), '')) ??
-            0;
-        int qty = int.tryParse(item['qty'].toString()) ?? 0;
-        total += (price * qty);
-        count += qty;
-      }
-      if (mounted && (_cartItemCount != count || _cartTotal != total)) {
-        setState(() {
-          _cartItemCount = count;
-          _cartTotal = total;
-        });
-      }
-    } else {
-      if (mounted && _cartItemCount != 0) {
-        setState(() {
-          _cartItemCount = 0;
-          _cartTotal = 0;
-        });
-      }
-    }
   }
 
   List<ProductModel> _products = [], _fullProducts = [];
   bool _isLoading = true;
-
-  // Cart summary state
-  int _cartItemCount = 0;
-  double _cartTotal = 0;
-  Timer? _cartTimer;
 
   /// Public method to sort products from outside (e.g. CollectionView header)
   void sortProducts(String sortType) {
@@ -173,11 +126,11 @@ class ProductsGridState extends State<ProductsGrid>
     // Industry Standard: Dynamic Aspect Ratio
     // Industry Standard: Dynamic Aspect Ratio for feature-rich cards
     // We use a taller ratio (0.56) to fit ratings, titles, and steppers comfortably
-    double aspectRatio = 0.56;
+    double aspectRatio = 0.55; // Slightly taller (was 0.56)
     if (width < 360) {
-      aspectRatio = 0.53;
+      aspectRatio = 0.52; // Taller (was 0.53)
     } else if (width > 420) {
-      aspectRatio = 0.60;
+      aspectRatio = 0.58; // Taller (was 0.60)
     }
 
     // Main Grid/List content
@@ -295,93 +248,15 @@ class ProductsGridState extends State<ProductsGrid>
     return Stack(
       children: [
         Positioned.fill(child: content),
-        _buildCartSummary(),
-      ],
-    );
-  }
-
-  Widget _buildCartSummary() {
-    if (_cartItemCount == 0) return const SizedBox.shrink();
-
-    return Positioned(
-      bottom: 25,
-      left: 15,
-      right: 15,
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.mediumImpact();
-          Routers.goTO(context, toBody: const CartView());
-        },
-        child: Container(
-          height: 60,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: Constants.baseColor,
-            borderRadius: BorderRadius.circular(15),
-            boxShadow: [
-              BoxShadow(
-                color: Constants.baseColor.withOpacity(0.35),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              )
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Left side: Item count and Price
-              Row(
-                children: [
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "${_cartItemCount} ${_cartItemCount > 1 ? 'ITEMS' : 'ITEM'}",
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      Text(
-                        "${Constants.inr}${_cartTotal.toStringAsFixed(0)}",
-                        style: GoogleFonts.outfit(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              // Right side: Action
-              Row(
-                children: [
-                  Text(
-                    "VIEW CART",
-                    style: GoogleFonts.outfit(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Icon(
-                    Icons.shopping_basket_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ],
-              ),
-            ],
+        const Positioned(
+          bottom: 25,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: CartSummaryBar(),
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -626,7 +501,7 @@ class _ProductCardState extends State<ProductCard> {
           Expanded(
             flex: 4,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+              padding: const EdgeInsets.fromLTRB(10, 4, 10, 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

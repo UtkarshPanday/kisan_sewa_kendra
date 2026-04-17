@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:kisan_sewa_kendra/components/cart_summary_bar.dart';
 import 'package:kisan_sewa_kendra/view/support_view.dart';
 import 'package:kisan_sewa_kendra/view/policy_pages.dart';
 
@@ -71,13 +72,25 @@ class _MyHomePageState extends State<MyHomePage>
                 ),
                 child: const Center(child: CircularProgressIndicator()),
               )
-            : IndexedStack(
-                index: _currentIndex,
+            : Stack(
                 children: [
-                  Home(scrollController: _scrollController),
-                  const Categories(),
-                  const OrderView(),
-                  const SupportView(),
+                  IndexedStack(
+                    index: _currentIndex,
+                    children: [
+                      Home(scrollController: _scrollController),
+                      const Categories(),
+                      const OrderView(),
+                      const SupportView(),
+                    ],
+                  ),
+                  const Positioned(
+                    bottom: 20,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: CartSummaryBar(),
+                    ),
+                  ),
                 ],
               ),
         bottomNavigationBar: Container(

@@ -14,6 +14,7 @@ import '../shopify/shopify.dart';
 import '../view/cart_view.dart';
 import '../view/home_view.dart';
 import '../view/product_view.dart';
+import 'cart_icon.dart';
 import 'network_image.dart';
 import 'widget_button.dart';
 
@@ -37,42 +38,6 @@ class KskAppbar extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _KskAppbarState extends State<KskAppbar> {
-  int _cartCount = 0;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchCartCount();
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _fetchCartCount() async {
-    _updateCartCount();
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      _updateCartCount();
-    });
-  }
-
-  Future<void> _updateCartCount() async {
-    String? cart = await Pref.getPref(PrefKey.cart);
-    int count = 0;
-    if (cart != null) {
-      List<dynamic> cartList = jsonDecode(cart);
-      count = cartList.length;
-    }
-    if (mounted) {
-      setState(() {
-        _cartCount = count;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -160,25 +125,9 @@ class _KskAppbarState extends State<KskAppbar> {
                 }).toList(),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: badges.Badge(
-              badgeContent: Text('$_cartCount',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold)),
-              position: badges.BadgePosition.topEnd(top: -4, end: -4),
-              showBadge: _cartCount > 0,
-              badgeStyle: badges.BadgeStyle(
-                  badgeColor: Constants.baseColor,
-                  padding: const EdgeInsets.all(4)),
-              child: InkWell(
-                onTap: () => Routers.goTO(context, toBody: const CartView()),
-                child: Icon(Icons.shopping_bag_outlined,
-                    color: Constants.baseColor, size: 28),
-              ),
-            ),
+          const Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: KskCartIcon(),
           ),
         ],
         bottom: PreferredSize(

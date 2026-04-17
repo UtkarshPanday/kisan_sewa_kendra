@@ -12,6 +12,7 @@ import 'support_view.dart';
 import '../controller/cart_controller.dart';
 import '../controller/routers.dart';
 import 'cart_view.dart';
+import '../components/cart_icon.dart';
 
 class OrderView extends StatefulWidget {
   const OrderView({super.key});
@@ -278,7 +279,13 @@ class _OrderViewState extends State<OrderView>
               ),
             ],
           ),
-          _buildStatIndicator(),
+          Row(
+            children: [
+              const KskCartIcon(),
+              const SizedBox(width: 12),
+              _buildStatIndicator(),
+            ],
+          ),
         ],
       ),
     );

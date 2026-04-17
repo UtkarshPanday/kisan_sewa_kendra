@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../components/cart_icon.dart';
 import '../../components/network_image.dart';
 import '../../components/widget_button.dart';
 import '../../controller/constants.dart';
@@ -164,7 +165,13 @@ class _CategoriesState extends State<Categories>
                         ),
                       ],
                     ),
-                    _buildStatIndicator(),
+                    Row(
+                      children: [
+                        const KskCartIcon(),
+                        const SizedBox(width: 12),
+                        _buildStatIndicator(),
+                      ],
+                    ),
                   ],
                 ),
               ),

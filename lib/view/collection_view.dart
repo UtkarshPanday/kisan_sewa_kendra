@@ -7,6 +7,7 @@ import 'package:kisan_sewa_kendra/components/products_grid.dart';
 import 'package:kisan_sewa_kendra/controller/constants.dart';
 import 'package:kisan_sewa_kendra/shopify/shopify.dart';
 
+import '../components/cart_icon.dart';
 import '../controller/pref.dart';
 import '../view/cart_view.dart';
 import '../controller/routers.dart';
@@ -143,7 +144,6 @@ class _CollectionViewState extends State<CollectionView>
             ),
           ],
         ),
-
       ),
     );
   }
@@ -208,6 +208,8 @@ class _CollectionViewState extends State<CollectionView>
                   ],
                 ),
               ),
+              const KskCartIcon(showBackground: true),
+              const SizedBox(width: 8),
               // Sort button
               _buildSortButton(),
             ],
@@ -275,91 +277,6 @@ class _CollectionViewState extends State<CollectionView>
         ),
         child:
             Icon(Icons.swap_vert_rounded, size: 20, color: Constants.baseColor),
-      ),
-    );
-  }
-
-  Widget _buildFloatingCart() {
-    if (_cartItemCount == 0) return const SizedBox.shrink();
-
-    return Positioned(
-      bottom: 25,
-      left: 15,
-      right: 15,
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.mediumImpact();
-          Routers.goTO(context, toBody: const CartView());
-        },
-        child: Container(
-          height: 60,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: Constants.baseColor,
-            borderRadius: BorderRadius.circular(15),
-            boxShadow: [
-              BoxShadow(
-                color: Constants.baseColor.withOpacity(0.35),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              )
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Info side
-              Row(
-                children: [
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "${_cartItemCount} ${_cartItemCount > 1 ? 'ITEMS' : 'ITEM'}",
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      Text(
-                        "${Constants.inr}${_cartTotal.toStringAsFixed(0)}",
-                        style: GoogleFonts.outfit(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              // Action side
-              Row(
-                children: [
-                  Text(
-                    "VIEW CART",
-                    style: GoogleFonts.outfit(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.shopping_basket_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
