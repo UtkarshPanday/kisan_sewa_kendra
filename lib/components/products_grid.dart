@@ -51,6 +51,19 @@ class ProductsGridState extends State<ProductsGrid>
   void initState() {
     super.initState();
     Future.delayed(Duration.zero, _init);
+    Constants.languageController.addListener(_onLanguageChanged);
+  }
+
+  @override
+  void dispose() {
+    Constants.languageController.removeListener(_onLanguageChanged);
+    super.dispose();
+  }
+
+  void _onLanguageChanged() {
+    if (mounted) {
+      _init();
+    }
   }
 
   List<ProductModel> _products = [], _fullProducts = [];
@@ -127,11 +140,12 @@ class ProductsGridState extends State<ProductsGrid>
     // Industry Standard: Dynamic Aspect Ratio
     // Industry Standard: Dynamic Aspect Ratio for feature-rich cards
     // We use a taller ratio (0.56) to fit ratings, titles, and steppers comfortably
-    double aspectRatio = 0.55; // Slightly taller (was 0.56)
+    double aspectRatio =
+        0.63; // Slightly more height to fix 0.2px Hindi overflow
     if (width < 360) {
-      aspectRatio = 0.52; // Taller (was 0.53)
+      aspectRatio = 0.60;
     } else if (width > 420) {
-      aspectRatio = 0.58; // Taller (was 0.60)
+      aspectRatio = 0.68;
     }
 
     // Main Grid/List content
@@ -340,7 +354,8 @@ class ProductsGridState extends State<ProductsGrid>
                 children: [
                   Constants.shimmer(height: 12, width: 40), // For rating pill
                   const SizedBox(height: 8),
-                  Constants.shimmer(height: 14, width: double.infinity), // Title line 1
+                  Constants.shimmer(
+                      height: 14, width: double.infinity), // Title line 1
                   const SizedBox(height: 4),
                   Constants.shimmer(height: 14, width: 100), // Title line 2
                   const Spacer(),
@@ -460,7 +475,7 @@ class _ProductCardState extends State<ProductCard> {
 
   Widget _buildRatingPill(double rating) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F8F6),
         borderRadius: BorderRadius.circular(6),
@@ -509,7 +524,7 @@ class _ProductCardState extends State<ProductCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            flex: 6,
+            flex: 65,
             child: WidgetButton(
               onTap: () => Routers.goTO(context,
                   toBody: ProductView(product: widget.product)),
@@ -533,14 +548,14 @@ class _ProductCardState extends State<ProductCard> {
             ),
           ),
           Expanded(
-            flex: 4,
+            flex: 35,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(10, 4, 10, 6),
+              padding: const EdgeInsets.fromLTRB(10, 2, 10, 2),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildRatingPill(fakeRating),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 1),
                   GestureDetector(
                     onTap: () => Routers.goTO(context,
                         toBody: ProductView(product: widget.product)),
@@ -549,10 +564,10 @@ class _ProductCardState extends State<ProductCard> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
-                        height: 1.3,
+                        height: 1.2,
                       ),
                     ),
                   ),
@@ -581,7 +596,7 @@ class _ProductCardState extends State<ProductCard> {
                               Text(
                                 "${Constants.inr}${variant.price}",
                                 style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w800,
                                   color: Constants.baseColor,
                                 ),
@@ -609,7 +624,7 @@ class _ProductCardState extends State<ProductCard> {
                               },
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 6),
+                                    horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   border: Border.all(
@@ -619,12 +634,15 @@ class _ProductCardState extends State<ProductCard> {
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
-                                      AppLocalizations.of(context)!.add,
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w900,
-                                          color: Constants.baseColor),
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        AppLocalizations.of(context)!.add,
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w900,
+                                            color: Constants.baseColor),
+                                      ),
                                     ),
                                     if (widget.product.variants.length > 1)
                                       Text(

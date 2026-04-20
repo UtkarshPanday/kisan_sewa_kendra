@@ -24,6 +24,19 @@ class _CategoriesState extends State<Categories>
   void initState() {
     super.initState();
     Future.delayed(Duration.zero, _init);
+    Constants.languageController.addListener(_onLanguageChanged);
+  }
+
+  @override
+  void dispose() {
+    Constants.languageController.removeListener(_onLanguageChanged);
+    super.dispose();
+  }
+
+  void _onLanguageChanged() {
+    if (mounted) {
+      _init();
+    }
   }
 
   List<CategoriesModel> _categories = [];

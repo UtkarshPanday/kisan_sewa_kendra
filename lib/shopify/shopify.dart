@@ -647,6 +647,8 @@ class Shopify {
         }
       }
 
+      debugPrint("Shopify Request [Lang: ${variables['lang']}]: $body");
+
       Map<String, dynamic> data = {
         'query': query,
         'variables': variables,
@@ -669,6 +671,12 @@ class Shopify {
         if (decoded['errors'] != null) {
           debugPrint("Shopify GraphQL Errors: ${decoded['errors']}");
         }
+        if (decoded['data'] != null) {
+          debugPrint("Shopify Response Data: ${jsonEncode(decoded['data'])}");
+        } else {
+          debugPrint(
+              "Shopify Response: No data returned for lang ${variables['lang']}");
+        }
         return decoded;
       } else {
         debugPrint("Shopify Error ${res.statusCode}: ${res.reasonPhrase}");
@@ -678,6 +686,89 @@ class Shopify {
       debugPrint("Shopify Network/Parsing Error: $e");
       return {};
     }
+  }
+
+  static Future<ProductModel?> getProductDetails(BuildContext context,
+      {required String productId}) async {
+    debugPrint("Fetching localized product details for: $productId");
+    try {
+      final fullId =
+          productId.contains(_proIdPre) ? productId : "$_proIdPre$productId";
+      var res = await getGraphQLData(
+        context,
+        body: '''
+          node(id: "$fullId") {
+            ... on Product {
+              id
+              title
+              descriptionHtml
+              vendor
+              productType
+              handle
+              featuredImage {
+                url
+              }
+              images(first: 10) {
+                nodes {
+                  url
+                }
+              }
+              variants(first: 20) {
+                nodes {
+                  id
+                  title
+                  price {
+                    amount
+                  }
+                  compareAtPrice {
+                    amount
+                  }
+                  quantityAvailable
+                }
+              }
+            }
+          }
+        ''',
+      );
+
+      if (res['data'] != null && res['data']['node'] != null) {
+        var p = res['data']['node'];
+
+        List<Map<String, dynamic>> variants = [];
+        if (p['variants'] != null && p['variants']['nodes'] != null) {
+          for (var v in p['variants']['nodes']) {
+            variants.add({
+              "id": v['id'].toString().replaceAll(_proVarIdPre, ''),
+              "title": v['title'] ?? '',
+              "price": v['price']?['amount']?.toString() ?? '0',
+              "compare_at_price": v['compareAtPrice']?['amount']?.toString(),
+              "inventory_quantity": v['quantityAvailable'] ?? 0,
+            });
+          }
+        }
+
+        Map<String, dynamic> li = {
+          "id": p['id'].toString().replaceAll(_proIdPre, ''),
+          "title": p["title"] ?? '',
+          "body_html": p["descriptionHtml"] ?? '',
+          "vendor": p["vendor"] ?? '',
+          "product_type": p["productType"] ?? '',
+          "handle": p["handle"] ?? '',
+          "images": p["images"] != null && p["images"]['nodes'] != null
+              ? (p["images"]['nodes'] as List)
+                  .map((e) => {"url": e['url']})
+                  .toList()
+              : [],
+          "variants": variants,
+          "image": p["featuredImage"],
+        };
+
+        return ProductModel.fromJson(li);
+      }
+    } catch (e) {
+      debugPrint("Error fetching product details: $e");
+    }
+    return null;
   }
 
   static Future<Map<String, dynamic>> getProductsFromCollections(

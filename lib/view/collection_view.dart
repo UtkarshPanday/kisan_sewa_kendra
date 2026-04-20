@@ -41,6 +41,13 @@ class _CollectionViewState extends State<CollectionView>
     _title = widget.title ?? '';
     _startCartTimer();
     Future.delayed(Duration.zero, _init);
+    Constants.languageController.addListener(_onLanguageChanged);
+  }
+
+  void _onLanguageChanged() {
+    if (mounted) {
+      _init();
+    }
   }
 
   void _startCartTimer() {
@@ -52,6 +59,7 @@ class _CollectionViewState extends State<CollectionView>
 
   @override
   void dispose() {
+    Constants.languageController.removeListener(_onLanguageChanged);
     _cartTimer?.cancel();
     super.dispose();
   }

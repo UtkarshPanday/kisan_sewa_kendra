@@ -192,7 +192,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get phoneNumber => 'Phone Number';
 
   @override
-  String get enterMobile => 'Enter 10-digit mobile number';
+  String get enterMobile => '10-digit number';
 
   @override
   String get emailAddress => 'Email Address';
@@ -214,6 +214,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get headOffice => 'Head Office';
+
+  @override
+  String get officeAddress => 'G-2/197A, Gulmohar Colony, Bhopal, M.P, 462039';
+
+  @override
+  String get officeEmail => 'info@krishikrantiorganics.com';
 
   @override
   String get orderSummary => 'Order Summary';
@@ -375,10 +381,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get updateNow => 'UPDATE NOW';
 
   @override
-  String get welcomeTo => 'Welcome to';
+  String get welcomeTo => 'Let\'s Get Started';
 
   @override
-  String get loginPrompt => 'Enter your mobile number to get started';
+  String get loginPrompt => 'Sign in with your mobile number to continue';
 
   @override
   String get mobileNumber => 'Mobile Number';
@@ -559,19 +565,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inclusiveTaxes => 'Inclusive of all taxes';
 
   @override
-  String get original => 'Original';
+  String get trust1Line1 => '100%';
 
   @override
-  String get easyReturns => 'Easy Returns';
+  String get trust1Line2 => 'Original Products';
 
   @override
-  String get returns => 'Returns';
+  String get trust2Line1 => 'Secure';
 
   @override
-  String get fastDispatch => 'Fast Dispatch';
+  String get trust2Line2 => 'Payments';
 
   @override
-  String get dispatch => 'Dispatch';
+  String get trust3Line1 => 'Best Results';
+
+  @override
+  String get trust3Line2 => 'Guaranteed';
 
   @override
   String get selectVariant => 'Select Variant';

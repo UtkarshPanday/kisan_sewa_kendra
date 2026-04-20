@@ -7,6 +7,8 @@ import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_en.dart';
 import 'app_localizations_hi.dart';
+import 'app_localizations_mr.dart';
+import 'app_localizations_ta.dart';
 
 // ignore_for_file: type=lint
 
@@ -95,7 +97,9 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
-    Locale('hi')
+    Locale('hi'),
+    Locale('mr'),
+    Locale('ta')
   ];
 
   /// No description provided for @home.
@@ -431,7 +435,7 @@ abstract class AppLocalizations {
   /// No description provided for @enterMobile.
   ///
   /// In en, this message translates to:
-  /// **'Enter 10-digit mobile number'**
+  /// **'10-digit number'**
   String get enterMobile;
 
   /// No description provided for @emailAddress.
@@ -475,6 +479,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Head Office'**
   String get headOffice;
+
+  /// No description provided for @officeAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'G-2/197A, Gulmohar Colony, Bhopal, M.P, 462039'**
+  String get officeAddress;
+
+  /// No description provided for @officeEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'info@krishikrantiorganics.com'**
+  String get officeEmail;
 
   /// No description provided for @orderSummary.
   ///
@@ -779,13 +795,13 @@ abstract class AppLocalizations {
   /// No description provided for @welcomeTo.
   ///
   /// In en, this message translates to:
-  /// **'Welcome to'**
+  /// **'Let\'s Get Started'**
   String get welcomeTo;
 
   /// No description provided for @loginPrompt.
   ///
   /// In en, this message translates to:
-  /// **'Enter your mobile number to get started'**
+  /// **'Sign in with your mobile number to continue'**
   String get loginPrompt;
 
   /// No description provided for @mobileNumber.
@@ -1118,35 +1134,41 @@ abstract class AppLocalizations {
   /// **'Inclusive of all taxes'**
   String get inclusiveTaxes;
 
-  /// No description provided for @original.
+  /// No description provided for @trust1Line1.
   ///
   /// In en, this message translates to:
-  /// **'Original'**
-  String get original;
+  /// **'100%'**
+  String get trust1Line1;
 
-  /// No description provided for @easyReturns.
+  /// No description provided for @trust1Line2.
   ///
   /// In en, this message translates to:
-  /// **'Easy Returns'**
-  String get easyReturns;
+  /// **'Original Products'**
+  String get trust1Line2;
 
-  /// No description provided for @returns.
+  /// No description provided for @trust2Line1.
   ///
   /// In en, this message translates to:
-  /// **'Returns'**
-  String get returns;
+  /// **'Secure'**
+  String get trust2Line1;
 
-  /// No description provided for @fastDispatch.
+  /// No description provided for @trust2Line2.
   ///
   /// In en, this message translates to:
-  /// **'Fast Dispatch'**
-  String get fastDispatch;
+  /// **'Payments'**
+  String get trust2Line2;
 
-  /// No description provided for @dispatch.
+  /// No description provided for @trust3Line1.
   ///
   /// In en, this message translates to:
-  /// **'Dispatch'**
-  String get dispatch;
+  /// **'Best Results'**
+  String get trust3Line1;
+
+  /// No description provided for @trust3Line2.
+  ///
+  /// In en, this message translates to:
+  /// **'Guaranteed'**
+  String get trust3Line2;
 
   /// No description provided for @selectVariant.
   ///
@@ -1664,7 +1686,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['en', 'hi'].contains(locale.languageCode);
+      <String>['en', 'hi', 'mr', 'ta'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -1677,6 +1699,10 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsEn();
     case 'hi':
       return AppLocalizationsHi();
+    case 'mr':
+      return AppLocalizationsMr();
+    case 'ta':
+      return AppLocalizationsTa();
   }
 
   throw FlutterError(

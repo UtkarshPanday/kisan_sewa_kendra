@@ -181,10 +181,10 @@ class _MyHomePageState extends State<MyHomePage>
                       children: [
                         const AnimatedDrawerLogo(size: 56),
                         const SizedBox(height: 12),
-                        Text(
-                          AppLocalizations.of(context)!.appTagline,
+                        const Text(
+                          "हर किसान की पहचान !",
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white,
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.2,

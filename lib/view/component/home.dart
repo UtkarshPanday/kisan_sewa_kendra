@@ -43,6 +43,19 @@ class _HomeState extends State<Home> {
     _initCategories();
     _fetchBanners();
     _fetchBestSellerIds();
+    Constants.languageController.addListener(_onLanguageChanged);
+  }
+
+  @override
+  void dispose() {
+    Constants.languageController.removeListener(_onLanguageChanged);
+    super.dispose();
+  }
+
+  void _onLanguageChanged() {
+    if (mounted) {
+      _refresh();
+    }
   }
 
   /// Refreshes all home data simultaneously (called on pull-to-refresh)

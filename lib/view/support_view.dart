@@ -69,7 +69,8 @@ class _SupportViewState extends State<SupportView>
   }
 
   Future<void> _openEmail() async {
-    final url = Uri.parse("mailto:kisansewakendra48@gmail.com");
+    final url =
+        Uri.parse("mailto:${AppLocalizations.of(context)!.officeEmail}");
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     }
@@ -143,9 +144,9 @@ class _SupportViewState extends State<SupportView>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-              Constants.baseColor.withOpacity(0.9),
-              Constants.baseColor,
-              Constants.baseColor.withOpacity(0.8),
+                Constants.baseColor.withOpacity(0.9),
+                Constants.baseColor,
+                Constants.baseColor.withOpacity(0.8),
               ],
             ),
             borderRadius: const BorderRadius.only(
@@ -320,7 +321,8 @@ class _SupportViewState extends State<SupportView>
               label: AppLocalizations.of(context)!.fullName,
               icon: Icons.person_outline_rounded,
               controller: _nameController,
-              validator: (v) => v!.isEmpty ? AppLocalizations.of(context)!.enterName : null,
+              validator: (v) =>
+                  v!.isEmpty ? AppLocalizations.of(context)!.enterName : null,
             ),
             _field(
               label: AppLocalizations.of(context)!.phoneNumber,
@@ -342,7 +344,8 @@ class _SupportViewState extends State<SupportView>
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
               validator: (v) {
-                if (v == null || v.isEmpty) return AppLocalizations.of(context)!.enterEmail;
+                if (v == null || v.isEmpty)
+                  return AppLocalizations.of(context)!.enterEmail;
                 if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) {
                   return AppLocalizations.of(context)!.enterEmail;
                 }
@@ -354,8 +357,9 @@ class _SupportViewState extends State<SupportView>
               icon: Icons.chat_bubble_outline_rounded,
               maxLines: 3,
               controller: _messageController,
-              validator: (v) =>
-                  (v == null || v.length < 3) ? AppLocalizations.of(context)!.minCharacters : null,
+              validator: (v) => (v == null || v.length < 3)
+                  ? AppLocalizations.of(context)!.minCharacters
+                  : null,
             ),
 
             const SizedBox(height: 4),
@@ -377,7 +381,9 @@ class _SupportViewState extends State<SupportView>
                       )
                     : const Icon(FontAwesomeIcons.whatsapp, size: 18),
                 label: Text(
-                  _isLoading ? AppLocalizations.of(context)!.sending : AppLocalizations.of(context)!.sendWhatsApp,
+                  _isLoading
+                      ? AppLocalizations.of(context)!.sending
+                      : AppLocalizations.of(context)!.sendWhatsApp,
                   style: const TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w700,
@@ -500,8 +506,8 @@ class _SupportViewState extends State<SupportView>
                         ),
                       ),
                       Text(
-                        "HIG 3/554, Arvind Vihar, Bagmugaliya,\nBhopal, MP – 462043",
-                        style: TextStyle(
+                        AppLocalizations.of(context)!.officeAddress,
+                        style: const TextStyle(
                           color: Color(0xFF6B7280),
                           fontSize: 12.5,
                         ),
@@ -524,17 +530,17 @@ class _SupportViewState extends State<SupportView>
                 padding: const EdgeInsets.all(8.0),
                 child: GestureDetector(
                   onTap: _openEmail,
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.email_outlined,
                         size: 18,
                         color: Color(0xFF6B7280),
                       ),
-                      SizedBox(width: 10),
+                      const SizedBox(width: 10),
                       Text(
-                        "kisansewakendra48@gmail.com",
-                        style: TextStyle(
+                        AppLocalizations.of(context)!.officeEmail,
+                        style: const TextStyle(
                           fontSize: 12.5,
                           color: Color(0xFF1565C0),
                           fontWeight: FontWeight.w500,

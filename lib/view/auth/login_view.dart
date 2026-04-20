@@ -130,35 +130,31 @@ class _LoginViewState extends State<LoginView>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
+                          const SizedBox(height: 20),
                           // Logo / Brand
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: Constants.baseColor.withOpacity(0.08),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.agriculture_rounded,
-                              size: 54,
-                              color: Constants.baseColor,
+                          Hero(
+                            tag: 'app_logo',
+                            child: Image.asset(
+                              'assets/logo-removebg-preview.png',
+                              height: 100,
+                              fit: BoxFit.contain,
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 24),
 
                           // Heading
                           Text(
-                            '${AppLocalizations.of(context)!.welcomeTo}\n${Constants.title}',
+                            AppLocalizations.of(context)!.welcomeTo,
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.grey.shade900,
-                              letterSpacing: -0.5,
-                              height: 1.2,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineLarge
+                                ?.copyWith(
+                                  color: Colors.grey.shade900,
+                                  letterSpacing: -1,
+                                ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           Text(
                             AppLocalizations.of(context)!.loginPrompt,
                             textAlign: TextAlign.center,
@@ -166,6 +162,7 @@ class _LoginViewState extends State<LoginView>
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
                               color: Colors.grey.shade500,
+                              height: 1.4,
                             ),
                           ),
                         ],
@@ -212,9 +209,9 @@ class _LoginViewState extends State<LoginView>
                             ),
                           ),
                         ),
-                        hintText: '9XXXXXXXXX',
+                        hintText: AppLocalizations.of(context)!.enterMobile,
                         hintStyle: TextStyle(
-                            color: Colors.grey.shade400, letterSpacing: 1),
+                            color: Colors.grey.shade400, letterSpacing: 0.5),
                         filled: true,
                         fillColor: Colors.grey.shade50,
                         border: OutlineInputBorder(
@@ -276,7 +273,8 @@ class _LoginViewState extends State<LoginView>
                               )
                             : Text(
                                 _cooldown > 0
-                                    ? AppLocalizations.of(context)!.tryAgainIn(_cooldown)
+                                    ? AppLocalizations.of(context)!
+                                        .tryAgainIn(_cooldown)
                                     : AppLocalizations.of(context)!.sendOtp,
                                 style: const TextStyle(
                                   fontSize: 17,

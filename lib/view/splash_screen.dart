@@ -13,7 +13,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _opacityAnimation;
@@ -50,7 +51,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       ),
     );
 
-    _textSlideAnimation = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
+    _textSlideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
       CurvedAnimation(
         parent: _controller,
         curve: const Interval(0.12, 0.44, curve: Curves.easeOut),
@@ -69,10 +71,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     } catch (e) {
       debugPrint("Init Error: $e");
     }
-    
+
     // 2. Check for updates
     final updateType = await UpdateService.checkUpdateStatus();
-    
+
     if (updateType == UpdateType.force && mounted) {
       UpdateService.showUpdateDialog(context, UpdateType.force);
       return; // Stop flow for force update
@@ -86,22 +88,25 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     // 4. Wait for minimum splash time
     await Future.delayed(const Duration(milliseconds: 3000));
-    
+
     if (mounted) {
       setState(() => _isExiting = true);
-      
+
       await Future.delayed(const Duration(milliseconds: 500));
 
       if (mounted) {
         // Check if user is already logged in
         final bool loggedIn = AuthController.isLoggedIn();
-        final Widget destination = loggedIn ? const MyHomePage() : const LoginView();
+        final Widget destination =
+            loggedIn ? const MyHomePage() : const LoginView();
 
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => destination,
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                destination,
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
             },
             transitionDuration: const Duration(milliseconds: 400),
@@ -109,7 +114,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         ).then((_) {
           // Show optional update dialog on Home if applicable
           if (updateType == UpdateType.optional && mounted && loggedIn) {
-             UpdateService.showUpdateDialog(context, UpdateType.optional);
+            UpdateService.showUpdateDialog(context, UpdateType.optional);
           }
         });
       }
@@ -204,10 +209,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                               opacity: _opacityAnimation.value,
                               child: Column(
                                 children: [
-                                  Text(
-                                    AppLocalizations.of(context)!.appBrandName,
+                                  const Text(
+                                    "Krishi Bhandar",
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 34,
                                       fontWeight: FontWeight.bold,
@@ -216,7 +221,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
-                                    AppLocalizations.of(context)!.appTagline,
+                                    "हर किसान की पहचान !",
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color: Colors.white.withOpacity(0.85),

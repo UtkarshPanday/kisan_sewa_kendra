@@ -193,7 +193,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get phoneNumber => 'फ़ोन नंबर';
 
   @override
-  String get enterMobile => '10-अंकों का मोबाइल नंबर दर्ज करें';
+  String get enterMobile => '10-अंकों का नंबर';
 
   @override
   String get emailAddress => 'ईमेल पता';
@@ -215,6 +215,12 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get headOffice => 'प्रधान कार्यालय';
+
+  @override
+  String get officeAddress => 'G-2/197A, गुलमोहर कॉलोनी, भोपाल, म.प्र., 462039';
+
+  @override
+  String get officeEmail => 'info@krishikrantiorganics.com';
 
   @override
   String get orderSummary => 'ऑर्डर सारांश';
@@ -377,10 +383,10 @@ class AppLocalizationsHi extends AppLocalizations {
   String get updateNow => 'अभी अपडेट करें';
 
   @override
-  String get welcomeTo => 'स्वागत है';
+  String get welcomeTo => 'चलिए शुरू करते हैं';
 
   @override
-  String get loginPrompt => 'शुरू करने के लिए अपना मोबाइल नंबर दर्ज करें';
+  String get loginPrompt => 'जारी रखने के लिए अपने मोबाइल नंबर से साइन इन करें';
 
   @override
   String get mobileNumber => 'मोबाइल नंबर';
@@ -560,19 +566,22 @@ class AppLocalizationsHi extends AppLocalizations {
   String get inclusiveTaxes => 'सभी करों सहित';
 
   @override
-  String get original => 'असली';
+  String get trust1Line1 => '100%';
 
   @override
-  String get easyReturns => 'आसान वापसी';
+  String get trust1Line2 => 'असली उत्पाद';
 
   @override
-  String get returns => 'वापसी';
+  String get trust2Line1 => 'सुरक्षित';
 
   @override
-  String get fastDispatch => 'तेज़ प्रेषण';
+  String get trust2Line2 => 'भुगतान';
 
   @override
-  String get dispatch => 'प्रेषण';
+  String get trust3Line1 => 'सर्वोत्तम परिणाम';
+
+  @override
+  String get trust3Line2 => 'गारंटीड';
 
   @override
   String get selectVariant => 'वैरिएंट चुनें';

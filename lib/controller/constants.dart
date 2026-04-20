@@ -106,6 +106,14 @@ class Constants {
         context,
       );
 
+      // Ensure Marathi is available if not already in the list
+      if (!languageList.any((l) => l.iso.toUpperCase() == 'MR')) {
+        languageList.add(LocalizationModel(name: 'मराठी', iso: 'MR'));
+      }
+      if (!languageList.any((l) => l.iso.toUpperCase() == 'TA')) {
+        languageList.add(LocalizationModel(name: 'தமிழ்', iso: 'TA'));
+      }
+
       lang = (await Pref.getPref(PrefKey.lang)) ?? "EN";
 
       final disc =

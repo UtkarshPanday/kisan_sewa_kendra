@@ -46,6 +46,7 @@ class _ProductViewState extends State<ProductView>
   List<ProductModel> _recommend = [];
   bool _enableAutoPlay = false;
   late TabController _tabController;
+  ProductModel? _localizedProduct;
   bool _isExpanded = false;
   int _cartCount = 0;
   List<dynamic> _cartItems = [];
@@ -104,14 +105,23 @@ class _ProductViewState extends State<ProductView>
           ? widget.product.variants.first.price
           : '0',
     );
+
+    Constants.languageController.addListener(_onLanguageChanged);
   }
 
   @override
   void dispose() {
+    Constants.languageController.removeListener(_onLanguageChanged);
     _timer?.cancel();
     _tabController.dispose();
     _reviewController.dispose();
     super.dispose();
+  }
+
+  void _onLanguageChanged() {
+    if (mounted) {
+      _init();
+    }
   }
 
   Future<void> _fetchCartCount() async {
@@ -149,12 +159,18 @@ class _ProductViewState extends State<ProductView>
   }
 
   Future<void> _init() async {
+    final localized = await Shopify.getProductDetails(
+      context,
+      productId: widget.product.id.toString(),
+    );
     _recommend = await Shopify.getProductsRecommend(
       context,
       id: widget.product.id.toString(),
     );
     if (mounted) {
-      setState(() {});
+      setState(() {
+        _localizedProduct = localized;
+      });
     }
   }
 
@@ -223,19 +239,28 @@ class _ProductViewState extends State<ProductView>
 
   Widget _buildTrustBadge(IconData icon, String line1, String line2) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, color: Colors.green[700], size: 20),
         const SizedBox(height: 4),
-        Text(line1,
-            style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: Colors.black87)),
-        Text(line2,
-            style: TextStyle(
-                fontSize: 9,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w600)),
+        Text(
+          line1,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w800, color: Colors.black87),
+        ),
+        Text(
+          line2,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+              fontSize: 9,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }
@@ -322,11 +347,12 @@ class _ProductViewState extends State<ProductView>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final product = _localizedProduct ?? widget.product;
 
-    if (widget.product.variants.isEmpty) {
+    if (product.variants.isEmpty) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(widget.product.title,
+          title: Text(product.title,
               style: const TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 18,
@@ -344,8 +370,10 @@ class _ProductViewState extends State<ProductView>
       );
     }
 
-    final variant = widget.product.variants[_varientIndex];
-    double fakeRating = 4.0 + (widget.product.id.hashCode % 11) / 10.0;
+    final variant = product.variants.length > _varientIndex
+        ? product.variants[_varientIndex]
+        : product.variants.first;
+    double fakeRating = 4.0 + (product.id.hashCode % 11) / 10.0;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -395,29 +423,25 @@ class _ProductViewState extends State<ProductView>
                       options: CarouselOptions(
                         aspectRatio: 1.25,
                         viewportFraction: 1,
-                        autoPlay: widget.product.images.length > 1
-                            ? _enableAutoPlay
-                            : false,
-                        enableInfiniteScroll: widget.product.images.length > 1,
+                        autoPlay:
+                            product.images.length > 1 ? _enableAutoPlay : false,
+                        enableInfiniteScroll: product.images.length > 1,
                         onPageChanged: (index, _) {
                           setState(() => _carouselIndex = index);
                         },
                       ),
-                      items: widget.product.images.map((img) {
+                      items: product.images.map((img) {
                         return KskNetworkImage(img, fit: BoxFit.contain);
                       }).toList(),
                     ),
-                    if (widget.product.images.length > 1)
+                    if (product.images.length > 1)
                       Positioned(
                         bottom: 10,
                         left: 0,
                         right: 0,
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: widget.product.images
-                              .asMap()
-                              .entries
-                              .map((entry) {
+                          children: product.images.asMap().entries.map((entry) {
                             return Container(
                               width: _carouselIndex == entry.key ? 22 : 7.0,
                               height: 7.0,
@@ -442,7 +466,7 @@ class _ProductViewState extends State<ProductView>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.product.title,
+                        product.title,
                         style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w900,
@@ -544,20 +568,28 @@ class _ProductViewState extends State<ProductView>
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _buildTrustBadge(Icons.verified_user_outlined,
-                                "100%", AppLocalizations.of(context)!.original),
+                            Expanded(
+                              child: _buildTrustBadge(
+                                  Icons.verified_user_outlined,
+                                  AppLocalizations.of(context)!.trust1Line1,
+                                  AppLocalizations.of(context)!.trust1Line2),
+                            ),
                             Container(
                                 width: 1, height: 30, color: Colors.grey[300]),
-                            _buildTrustBadge(
-                                Icons.assignment_return_outlined,
-                                AppLocalizations.of(context)!.easy,
-                                AppLocalizations.of(context)!.returns),
+                            Expanded(
+                              child: _buildTrustBadge(
+                                  Icons.security_outlined,
+                                  AppLocalizations.of(context)!.trust2Line1,
+                                  AppLocalizations.of(context)!.trust2Line2),
+                            ),
                             Container(
                                 width: 1, height: 30, color: Colors.grey[300]),
-                            _buildTrustBadge(
-                                Icons.local_shipping_outlined,
-                                AppLocalizations.of(context)!.fast,
-                                AppLocalizations.of(context)!.dispatch),
+                            Expanded(
+                              child: _buildTrustBadge(
+                                  Icons.stars_outlined,
+                                  AppLocalizations.of(context)!.trust3Line1,
+                                  AppLocalizations.of(context)!.trust3Line2),
+                            ),
                           ],
                         ),
                       ),
@@ -582,9 +614,8 @@ class _ProductViewState extends State<ProductView>
                       Wrap(
                         spacing: 12,
                         runSpacing: 12,
-                        children:
-                            List.generate(widget.product.variants.length, (i) {
-                          final v = widget.product.variants[i];
+                        children: List.generate(product.variants.length, (i) {
+                          final v = product.variants[i];
                           final isSelected = _varientIndex == i;
                           final isOutOfStock = v.inventoryQuantity <= 0;
 
@@ -706,11 +737,17 @@ class _ProductViewState extends State<ProductView>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(AppLocalizations.of(context)!.similarProducts,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 18,
-                                color: Colors.black)),
+                        Expanded(
+                          child: Text(
+                              AppLocalizations.of(context)!.similarProducts,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 18,
+                                  color: Colors.black)),
+                        ),
+                        const SizedBox(width: 12),
                         Text(AppLocalizations.of(context)!.viewAll,
                             style: TextStyle(
                                 color: Constants.baseColor,
@@ -780,11 +817,11 @@ class _ProductViewState extends State<ProductView>
 
                           await CartController.addToCart(
                             variantId: variant.id,
-                            productId: widget.product.id,
+                            productId: product.id,
                             qty: 1,
-                            title: widget.product.title,
+                            title: product.title,
                             price: variant.price,
-                            image: widget.product.image,
+                            image: product.image,
                             variantTitle: variant.title,
                           );
                           if (!context.mounted) return;
@@ -864,11 +901,11 @@ class _ProductViewState extends State<ProductView>
 
                     await CartController.addToCart(
                       variantId: variant.id,
-                      productId: widget.product.id,
+                      productId: product.id,
                       qty: 1,
-                      title: widget.product.title,
+                      title: product.title,
                       price: variant.price,
-                      image: widget.product.image,
+                      image: product.image,
                       variantTitle: variant.title,
                     );
                     if (!context.mounted) return;
@@ -901,18 +938,17 @@ class _ProductViewState extends State<ProductView>
   }
 
   Widget _buildOverviewContent() {
+    final product = _localizedProduct ?? widget.product;
     final Map<String, String> details = {
-      AppLocalizations.of(context)!.productName: widget.product.title,
+      AppLocalizations.of(context)!.productName: product.title,
       AppLocalizations.of(context)!.brand: "KrishiKranti Organics",
-      AppLocalizations.of(context)!.category: widget.product.productType,
+      AppLocalizations.of(context)!.category: product.productType,
     };
 
     String techContent = "";
-    if (widget.product.title.contains('(') &&
-        widget.product.title.contains(')')) {
-      techContent = widget.product.title.substring(
-          widget.product.title.lastIndexOf('(') + 1,
-          widget.product.title.lastIndexOf(')'));
+    if (product.title.contains('(') && product.title.contains(')')) {
+      techContent = product.title.substring(
+          product.title.lastIndexOf('(') + 1, product.title.lastIndexOf(')'));
     }
 
     if (techContent.isNotEmpty) {
@@ -960,7 +996,8 @@ class _ProductViewState extends State<ProductView>
   }
 
   Widget _buildDescriptionContent() {
-    if (widget.product.body.isEmpty) {
+    final product = _localizedProduct ?? widget.product;
+    if (product.body.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(40),
         child: Center(
@@ -995,7 +1032,7 @@ class _ProductViewState extends State<ProductView>
                     SingleChildScrollView(
                       physics: const NeverScrollableScrollPhysics(),
                       child: HtmlWidget(
-                        widget.product.body,
+                        product.body,
                         textStyle: const TextStyle(
                             fontSize: 14,
                             color: Color(0xFF666666),
@@ -1108,21 +1145,21 @@ class _ProductViewState extends State<ProductView>
                 _usageItem(
                     Icons.water_drop_outlined,
                     AppLocalizations.of(context)!.dosage,
-                    "Mix 2-3 ml per liter of water."),
+                    AppLocalizations.of(context)!.dosageDesc),
                 const Padding(
                     padding: EdgeInsets.symmetric(vertical: 12),
                     child: Divider(height: 1, color: Color(0xFFEBEBEB))),
                 _usageItem(
                     Icons.schedule_rounded,
                     AppLocalizations.of(context)!.applyTime,
-                    "Best applied during early morning or evening."),
+                    AppLocalizations.of(context)!.applyTimeDesc),
                 const Padding(
                     padding: EdgeInsets.symmetric(vertical: 12),
                     child: Divider(height: 1, color: Color(0xFFEBEBEB))),
                 _usageItem(
                     Icons.auto_awesome_outlined,
                     AppLocalizations.of(context)!.method,
-                    "Foliar spray for maximum effectiveness."),
+                    AppLocalizations.of(context)!.methodDesc),
               ],
             ),
           ),
@@ -1316,7 +1353,7 @@ class _ProductViewState extends State<ProductView>
           itemCount: _reviews.length,
           itemBuilder: (context, index) {
             final review = _reviews[index];
-            
+
             // Translate placeholder comments
             String comment = review['comment'];
             if (comment.contains("Very effective product")) {
@@ -1347,7 +1384,9 @@ class _ProductViewState extends State<ProductView>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        review['name'] == "You" || review['name'] == AppLocalizations.of(context)!.you
+                        review['name'] == "You" ||
+                                review['name'] ==
+                                    AppLocalizations.of(context)!.you
                             ? AppLocalizations.of(context)!.you
                             : (review['name'] == "Rahul Sharma"
                                 ? AppLocalizations.of(context)!.review1Name
