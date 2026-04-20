@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'otp_view.dart';
+import 'package:kisan_sewa_kendra/l10n/app_localizations.dart';
 import '../home_view.dart';
 import '../../controller/auth_controller.dart';
 import '../../controller/constants.dart';
@@ -129,42 +130,39 @@ class _LoginViewState extends State<LoginView>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
+                          const SizedBox(height: 20),
                           // Logo / Brand
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: Constants.baseColor.withOpacity(0.08),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.agriculture_rounded,
-                              size: 54,
-                              color: Constants.baseColor,
+                          Hero(
+                            tag: 'app_logo',
+                            child: Image.asset(
+                              'assets/logo-removebg-preview.png',
+                              height: 100,
+                              fit: BoxFit.contain,
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 24),
 
                           // Heading
                           Text(
-                            'Welcome to\n${Constants.title}',
+                            AppLocalizations.of(context)!.welcomeTo,
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.grey.shade900,
-                              letterSpacing: -0.5,
-                              height: 1.2,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineLarge
+                                ?.copyWith(
+                                  color: Colors.grey.shade900,
+                                  letterSpacing: -1,
+                                ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           Text(
-                            'Enter your mobile number to get started',
+                            AppLocalizations.of(context)!.loginPrompt,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
                               color: Colors.grey.shade500,
+                              height: 1.4,
                             ),
                           ),
                         ],
@@ -174,7 +172,7 @@ class _LoginViewState extends State<LoginView>
 
                     // Phone field
                     Text(
-                      'Mobile Number',
+                      AppLocalizations.of(context)!.mobileNumber,
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
@@ -211,9 +209,9 @@ class _LoginViewState extends State<LoginView>
                             ),
                           ),
                         ),
-                        hintText: '9876543210',
+                        hintText: AppLocalizations.of(context)!.enterMobile,
                         hintStyle: TextStyle(
-                            color: Colors.grey.shade300, letterSpacing: 1),
+                            color: Colors.grey.shade400, letterSpacing: 0.5),
                         filled: true,
                         fillColor: Colors.grey.shade50,
                         border: OutlineInputBorder(
@@ -241,9 +239,9 @@ class _LoginViewState extends State<LoginView>
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty)
-                          return 'Please enter your mobile number';
+                          return AppLocalizations.of(context)!.enterMobileValid;
                         if (value.length != 10)
-                          return 'Mobile number must be 10 digits';
+                          return AppLocalizations.of(context)!.enterMobile10;
                         return null;
                       },
                     ),
@@ -254,7 +252,8 @@ class _LoginViewState extends State<LoginView>
                       width: double.infinity,
                       height: 58,
                       child: ElevatedButton(
-                        onPressed: (_isLoading || _cooldown > 0) ? null : _sendOtp,
+                        onPressed:
+                            (_isLoading || _cooldown > 0) ? null : _sendOtp,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Constants.baseColor,
                           foregroundColor: Colors.white,
@@ -273,7 +272,10 @@ class _LoginViewState extends State<LoginView>
                                 ),
                               )
                             : Text(
-                                _cooldown > 0 ? 'Try again in $_cooldown s' : 'Send OTP',
+                                _cooldown > 0
+                                    ? AppLocalizations.of(context)!
+                                        .tryAgainIn(_cooldown)
+                                    : AppLocalizations.of(context)!.sendOtp,
                                 style: const TextStyle(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w700,
@@ -286,7 +288,7 @@ class _LoginViewState extends State<LoginView>
 
                     Center(
                       child: Text(
-                        'We\'ll send a verification code to your number',
+                        AppLocalizations.of(context)!.verificationSentMsg,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                             fontSize: 13, color: Colors.grey.shade400),
@@ -301,7 +303,7 @@ class _LoginViewState extends State<LoginView>
                         alignment: WrapAlignment.center,
                         children: [
                           Text(
-                            'By continuing, you agree to our ',
+                            AppLocalizations.of(context)!.agreeTermsMsg,
                             style: TextStyle(
                                 fontSize: 12, color: Colors.grey.shade400),
                           ),
@@ -314,7 +316,7 @@ class _LoginViewState extends State<LoginView>
                               }
                             },
                             child: Text(
-                              'Terms of Service',
+                              AppLocalizations.of(context)!.termsConditions,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Constants.baseColor,
@@ -323,7 +325,7 @@ class _LoginViewState extends State<LoginView>
                             ),
                           ),
                           Text(
-                            ' and ',
+                            AppLocalizations.of(context)!.and,
                             style: TextStyle(
                                 fontSize: 12, color: Colors.grey.shade400),
                           ),
@@ -336,7 +338,7 @@ class _LoginViewState extends State<LoginView>
                               }
                             },
                             child: Text(
-                              'Privacy Policy',
+                              AppLocalizations.of(context)!.privacyPolicy,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Constants.baseColor,

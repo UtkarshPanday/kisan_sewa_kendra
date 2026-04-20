@@ -23,7 +23,15 @@ class AuthController {
 
   static Future<String?> getSavedPhone() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyPhone);
+    String? phone = prefs.getString(_keyPhone);
+    if (phone == null && _auth.currentUser?.phoneNumber != null) {
+      String fbPhone = _auth.currentUser!.phoneNumber!;
+      if (fbPhone.startsWith('+91')) {
+        fbPhone = fbPhone.substring(3);
+      }
+      return fbPhone;
+    }
+    return phone;
   }
 
   static Future<String?> getSavedName() async {
@@ -36,13 +44,21 @@ class AuthController {
     return prefs.getString(_keyShopifyId);
   }
 
+  static Future<String?> getSavedEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyEmail);
+  }
+
   static Future<void> saveAddress({
     required String pincode,
     required String address1,
     required String address2,
     required String city,
     required String state,
+    String? firstName,
+    String? lastName,
     String? name,
+    String? phone,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final address = {
@@ -52,22 +68,52 @@ class AuthController {
       'city': city,
       'state': state,
       'name': name ?? '',
+      'first_name': firstName ?? '',
+      'last_name': lastName ?? '',
+      'phone': phone ?? '',
     };
 
     List<Map<String, String>> current = await getStoredAddresses();
-    
-    // If name & address1 & pincode matches an existing address, don't duplicate
-    bool exists = current.any((a) =>
-        a['address1'] == address1 &&
-        a['pincode'] == pincode &&
-        a['name'] == name);
 
-    if (!exists) {
-      current.insert(0, address); // Add new address at the top
-      await prefs.setString(_keyAddressList, jsonEncode(current));
+    current.insert(0, address); // Add new address at the top
+    await prefs.setString(_keyAddressList, jsonEncode(current));
+
+    if (name != null) {
+      await prefs.setString(_keyName, name);
+      // Background sync name to Shopify
+      _updateShopifyCustomerName(name);
     }
-    
-    if (name != null) await prefs.setString(_keyName, name);
+  }
+
+  static Future<void> _updateShopifyCustomerName(String name) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? customerId = prefs.getString(_keyShopifyId);
+      if (customerId == null) return;
+
+      final names = name.split(' ');
+      final firstName = names.first;
+      final lastName = names.length > 1 ? names.sublist(1).join(' ') : '';
+
+      const String baseUrl = "https://3b7f20-3.myshopify.com/admin/api/2024-10";
+      await http.put(
+        Uri.parse('$baseUrl/customers/$customerId.json'),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': Constants.shopifyAccessToken,
+        },
+        body: jsonEncode({
+          "customer": {
+            "id": customerId,
+            "first_name": firstName,
+            "last_name": lastName,
+          }
+        }),
+      );
+      debugPrint('AuthController: Synced name "$name" to Shopify');
+    } catch (e) {
+      debugPrint('AuthController: Name sync error: $e');
+    }
   }
 
   static Future<List<Map<String, String>>> getStoredAddresses() async {
@@ -119,27 +165,40 @@ class AuthController {
           // Auto-verification on Android (SMS auto-read)
           try {
             await _auth.signInWithCredential(credential);
-            
+
             // Save phone and initial Shopify sync
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString(_keyPhone, phone);
-            
+
             // Critical to sync shopify even in auto-verification
             await syncWithShopify(phone);
-            
+
             onAutoVerified();
           } catch (e) {
-            onError('Auto-verification failed: $e');
+            debugPrint('AuthController: Auto-verification notice: $e');
+            // Check if we are already signed in (sometimes happens in quick succession)
+            if (_auth.currentUser != null) {
+              onAutoVerified();
+            }
+            // Note: We don't call onError here because the user can still enter the OTP manually
           }
         },
         verificationFailed: (FirebaseAuthException e) {
+          // If we are already signed in (auto-verification completed), ignore late failure events
+          if (_auth.currentUser != null) return;
+
           String message = 'Verification failed. Please try again.';
           if (e.code == 'invalid-phone-number') {
             message = 'Invalid phone number. Please check and try again.';
           } else if (e.code == 'too-many-requests') {
-            message = 'Too many attempts. You have been temporarily blocked for security reasons. Please try again in 4-24 hours.';
+            message =
+                'Too many attempts. You have been temporarily blocked for security reasons. Please try again in 4-24 hours.';
           } else if (e.code == 'network-request-failed') {
             message = 'Network error. Please check your internet connection.';
+          } else if (e.code == 'session-expired') {
+            message = 'The SMS code has expired. Please request a new code.';
+          } else {
+            message = 'Error (${e.code}): ${e.message}';
           }
           onError(message);
         },
@@ -197,9 +256,10 @@ class AuthController {
       };
 
       // Search for existing customer by phone
+      // %2B correctly URL-encodes the + sign, ensuring Shopify correctly matches existing phone numbers
       final searchRes = await http.get(
         Uri.parse(
-            '$baseUrl/customers/search.json?query=phone:+91$phone&limit=1'),
+            '$baseUrl/customers/search.json?query=phone:%2B91$phone&limit=1'),
         headers: headers,
       );
 

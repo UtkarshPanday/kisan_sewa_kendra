@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../controller/constants.dart';
 import '../../shopify/shopify.dart';
+import 'package:kisan_sewa_kendra/l10n/app_localizations.dart';
 
 class CouponsView extends StatefulWidget {
   const CouponsView({super.key});
@@ -44,7 +45,7 @@ class _CouponsViewState extends State<CouponsView> {
         Navigator.pop(context, result);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid or expired coupon code.'), backgroundColor: Colors.red),
+          SnackBar(content: Text(AppLocalizations.of(context)!.invalidCoupon), backgroundColor: Colors.red),
         );
       }
     }
@@ -55,7 +56,7 @@ class _CouponsViewState extends State<CouponsView> {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Apply Coupon', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+        title: Text(AppLocalizations.of(context)!.applyCoupon, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.white,
@@ -76,7 +77,7 @@ class _CouponsViewState extends State<CouponsView> {
                   child: TextField(
                     controller: _codeController,
                     decoration: InputDecoration(
-                      hintText: 'Enter coupon code',
+                      hintText: AppLocalizations.of(context)!.enterCouponCode,
                       hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
@@ -101,7 +102,7 @@ class _CouponsViewState extends State<CouponsView> {
                     ),
                     child: _isLoading 
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('APPLY', style: TextStyle(fontWeight: FontWeight.bold)),
+                      : Text(AppLocalizations.of(context)!.apply, style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -156,7 +157,7 @@ class _CouponsViewState extends State<CouponsView> {
                           ),
                           TextButton(
                             onPressed: () => _applyCode(coupon['code']),
-                            child: Text('APPLY', style: TextStyle(color: Constants.baseColor, fontWeight: FontWeight.bold)),
+                            child: Text(AppLocalizations.of(context)!.apply, style: TextStyle(color: Constants.baseColor, fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
