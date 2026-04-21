@@ -498,7 +498,7 @@ class AppLocalizationsMr extends AppLocalizations {
   String get orderSuccessTitle => 'ऑर्डर यशस्वी';
 
   @override
-  String get kisanSewaKendra => 'किसान सेवा केंद्र';
+  String get kisanSewaKendra => 'कृषि भंडार';
 
   @override
   String get amountPending => 'बाकी रक्कम';
@@ -841,4 +841,7 @@ class AppLocalizationsMr extends AppLocalizations {
 
   @override
   String get cancel => 'रद्द करा';
+
+  @override
+  String get addFollowingToGetFree => 'Add following to get free:';
 }

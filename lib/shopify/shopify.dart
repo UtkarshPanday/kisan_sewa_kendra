@@ -56,9 +56,10 @@ class ShopifyAPI {
 
   static Future<List<dynamic>> getCustomerOrders(String customerId) async {
     try {
+      final String cleanId = customerId.split('/').last;
       final String query = '''
         query {
-          orders(first: 50, reverse: true, query: "customer_id:$customerId") {
+          orders(first: 50, reverse: true, query: "customer_id:$cleanId") {
             nodes {
               id
               name
@@ -109,8 +110,7 @@ class ShopifyAPI {
       ''';
 
       var res = await http.post(
-        Uri.parse(
-            "https://3b7f20-3.myshopify.com/admin/api/2024-10/graphql.json"),
+        Uri.parse("$_baseUrl/graphql.json"),
         body: json.encode({'query': query}),
         headers: {
           'content-type': 'application/json',
@@ -177,7 +177,6 @@ class ShopifyAPI {
                 }).toList(),
               });
 
-              // Fallback calculation for subtotal in list view too
               var lastOrder = orders.last;
               if (lastOrder['subtotal_price'] == null ||
                   lastOrder['subtotal_price'] == '0.00' ||
@@ -191,7 +190,7 @@ class ShopifyAPI {
                 lastOrder['subtotal_price'] = sub.toStringAsFixed(2);
               }
             } catch (e) {
-              debugPrint("Mapper Error for order node: $e");
+              debugPrint("Mapper Error: $e");
             }
           }
           return orders;
@@ -512,6 +511,7 @@ class ShopifyAPI {
 
   static Future<Map<String, dynamic>> createOrder({
     String? customerId,
+    String? email,
     required List<Map<String, dynamic>> lineItems,
     required Map<String, dynamic> shippingAddress,
     required double totalAmount,
@@ -527,13 +527,23 @@ class ShopifyAPI {
         };
       }).toList();
 
+      String cleanPhone = shippingAddress['phone']
+              ?.toString()
+              .replaceAll(RegExp(r'[^\d]'), '') ??
+          '';
+      if (cleanPhone.length == 10) {
+        cleanPhone = "+91$cleanPhone";
+      } else if (cleanPhone.length > 10 && !cleanPhone.startsWith('+')) {
+        cleanPhone = "+$cleanPhone";
+      }
+
       final Map<String, dynamic> orderPayload = {
         "line_items": cleanLineItems,
         "financial_status": isCod ? "pending" : "paid",
         "total_price": totalAmount.toStringAsFixed(2),
         "currency": "INR",
-        "email": shippingAddress['email'] ?? "",
-        "phone": shippingAddress['phone'] ?? "",
+        "email": email ?? shippingAddress['email'] ?? "",
+        "phone": cleanPhone,
         "note_attributes": [
           {
             "name": "payment_id",
@@ -555,17 +565,23 @@ class ShopifyAPI {
           "city": shippingAddress['city'] ?? "",
           "province": shippingAddress['state'] ?? "",
           "zip": shippingAddress['pincode'] ?? "",
-          "phone": shippingAddress['phone'] ?? "",
+          "phone": cleanPhone,
           "country": "India"
         },
         "inventory_behavior": "decrement_ignoring_policy",
         "send_receipt": true,
       };
 
+      debugPrint(
+          "DEBUG: Shopify Order Payload --> ${jsonEncode(orderPayload)}");
+
       if (customerId != null && customerId.isNotEmpty && customerId != "null") {
         try {
           final int cleanId = int.parse(customerId.split('/').last);
-          orderPayload["customer"] = {"id": cleanId};
+          orderPayload["customer"] = {
+            "id": cleanId,
+            "phone": cleanPhone,
+          };
         } catch (_) {}
       }
 
@@ -581,11 +597,16 @@ class ShopifyAPI {
         return jsonDecode(res.body);
       } else {
         debugPrint("Create Order Error ${res.statusCode}: ${res.body}");
+        return {
+          "error": "Shopify Status ${res.statusCode}: ${res.body}",
+        };
       }
     } catch (e) {
       debugPrint("createOrder Overall Error: $e");
+      return {
+        "error": "Exception: $e",
+      };
     }
-    return {};
   }
 
   static Future<bool> cancelOrder(String orderId) async {
@@ -713,6 +734,11 @@ class Shopify {
                   url
                 }
               }
+              collections(first: 1) {
+                nodes {
+                  id
+                }
+              }
               variants(first: 20) {
                 nodes {
                   id
@@ -733,6 +759,15 @@ class Shopify {
 
       if (res['data'] != null && res['data']['node'] != null) {
         var p = res['data']['node'];
+
+        String? collectionId;
+        if (p['collections'] != null &&
+            p['collections']['nodes'] != null &&
+            (p['collections']['nodes'] as List).isNotEmpty) {
+          collectionId = p['collections']['nodes'][0]['id']
+              .toString()
+              .replaceAll(_colIdPre, '');
+        }
 
         List<Map<String, dynamic>> variants = [];
         if (p['variants'] != null && p['variants']['nodes'] != null) {
@@ -761,6 +796,7 @@ class Shopify {
               : [],
           "variants": variants,
           "image": p["featuredImage"],
+          "collectionId": collectionId,
         };
 
         return ProductModel.fromJson(li);
@@ -1511,7 +1547,7 @@ class ShopifyAdmin {
     try {
       const String query = '''
         query {
-          codeDiscountNodes(first: 10, query: "status:active") {
+          codeDiscountNodes(first: 20, query: "status:active") {
             edges {
               node {
                 codeDiscount {
@@ -1519,25 +1555,76 @@ class ShopifyAdmin {
                     title
                     summary
                     status
-                    codes(first: 1) {
-                      edges {
-                        node {
-                          code
-                        }
-                      }
+                    startsAt
+                    appliesOncePerCustomer
+                    customerSelection {
+                      ... on DiscountCustomerAll { allCustomers }
                     }
+                    codes(first: 1) { edges { node { code } } }
                     customerGets {
                       value {
-                        ... on DiscountAmount {
-                          amount {
-                            amount
+                        ... on DiscountAmount { amount { amount } }
+                        ... on DiscountPercentage { percentage }
+                      }
+                    }
+                  }
+                  ... on DiscountCodeBxgy {
+                    title
+                    summary
+                    status
+                    startsAt
+                    appliesOncePerCustomer
+                    customerSelection {
+                      ... on DiscountCustomerAll { allCustomers }
+                    }
+                    codes(first: 1) { edges { node { code } } }
+                    customerGets {
+                      value {
+                        ... on DiscountAmount { amount { amount } }
+                        ... on DiscountPercentage { percentage }
+                      }
+                      items {
+                        ... on DiscountProducts {
+                          products(first: 10) {
+                            nodes {
+                              id
+                              title
+                              featuredImage { url }
+                              variants(first: 1) {
+                                nodes { id title price }
+                              }
+                            }
                           }
                         }
-                        ... on DiscountPercentage {
-                          percentage
+                        ... on DiscountCollections {
+                          collections(first: 2) {
+                            nodes {
+                              products(first: 5) {
+                                nodes {
+                                  id
+                                  title
+                                  featuredImage { url }
+                                  variants(first: 1) {
+                                    nodes { id title price }
+                                  }
+                                }
+                              }
+                            }
+                          }
                         }
                       }
                     }
+                  }
+                  ... on DiscountCodeFreeShipping {
+                    title
+                    summary
+                    status
+                    startsAt
+                    appliesOncePerCustomer
+                    customerSelection {
+                      ... on DiscountCustomerAll { allCustomers }
+                    }
+                    codes(first: 1) { edges { node { code } } }
                   }
                 }
               }
@@ -1553,6 +1640,7 @@ class ShopifyAdmin {
       );
 
       if (res.statusCode == 200) {
+        debugPrint("Get Discounts Response: ${res.body}");
         final data = jsonDecode(res.body);
         List<Map<String, dynamic>> discounts = [];
 
@@ -1563,13 +1651,17 @@ class ShopifyAdmin {
             final node = edge['node']['codeDiscount'];
             if (node == null || node.isEmpty) continue;
 
-            final codesList = node['codes']['edges'] as List?;
-            if (codesList == null || codesList.isEmpty) continue;
+            final codesList =
+                (node['codes'] != null && node['codes']['edges'] != null)
+                    ? node['codes']['edges'] as List
+                    : [];
+            if (codesList.isEmpty) continue;
 
-            final codeNode = codesList.first['node'];
-            if (codeNode == null) continue;
+            final firstCodeNode = codesList[0]['node'];
 
-            final valObj = node['customerGets']?['value'];
+            final valObj = node['customerGets'] != null
+                ? node['customerGets']['value']
+                : null;
             double value = 0;
             String type = 'fixed_amount';
 
@@ -1584,15 +1676,124 @@ class ShopifyAdmin {
                         100;
                 type = 'percentage';
               }
+            } else {
+              type = 'special';
+              value = 0;
+            }
+
+            final customerGets = node['customerGets'];
+            List<Map<String, dynamic>> entitledProducts = [];
+            if (customerGets != null && customerGets['items'] != null) {
+              final items = customerGets['items'];
+
+              // Handle Product Entitlements
+              if (items['products'] != null &&
+                  items['products']['nodes'] != null) {
+                for (var pro in items['products']['nodes']) {
+                  final variants = (pro['variants'] != null &&
+                          pro['variants']['nodes'] != null)
+                      ? pro['variants']['nodes'] as List
+                      : [];
+                  final variant = variants.isNotEmpty ? variants[0] : null;
+
+                  entitledProducts.add({
+                    'id': pro['id']?.toString().split('/').last ?? '',
+                    'title': pro['title'] ?? '',
+                    'image': pro['featuredImage']?['url'] ?? '',
+                    'variantId': variant != null
+                        ? variant['id']?.toString().split('/').last ?? ''
+                        : '',
+                    'variantTitle':
+                        variant != null ? variant['title'] ?? '' : '',
+                    'price': variant != null
+                        ? variant['price']?.toString() ?? '0'
+                        : '0',
+                  });
+                }
+              }
+
+              // Handle Collection Entitlements
+              if (items['collections'] != null &&
+                  items['collections']['nodes'] != null) {
+                for (var coll in items['collections']['nodes']) {
+                  if (coll['products'] != null &&
+                      coll['products']['nodes'] != null) {
+                    for (var pro in coll['products']['nodes']) {
+                      final variants = (pro['variants'] != null &&
+                              pro['variants']['nodes'] != null)
+                          ? pro['variants']['nodes'] as List
+                          : [];
+                      final variant = variants.isNotEmpty ? variants[0] : null;
+
+                      entitledProducts.add({
+                        'id': pro['id']?.toString().split('/').last ?? '',
+                        'title': pro['title'] ?? '',
+                        'image': pro['featuredImage']?['url'] ?? '',
+                        'variantId': variant != null
+                            ? variant['id']?.toString().split('/').last ?? ''
+                            : '',
+                        'variantTitle':
+                            variant != null ? variant['title'] ?? '' : '',
+                        'price': variant != null
+                            ? variant['price']?.toString() ?? '0'
+                            : '0',
+                      });
+                    }
+                  }
+                }
+              }
+            }
+
+            if (entitledProducts.isNotEmpty) {
+              type = 'special';
+              value = 0;
+            }
+
+            final minReq = node['minimumRequirement'];
+            double minAmount = 0;
+            int minQty = 0;
+            if (minReq != null) {
+              if (minReq['amount'] != null) {
+                minAmount =
+                    double.tryParse(minReq['amount']['amount'].toString()) ?? 0;
+              } else if (minReq['greaterThanOrEqualToQuantity'] != null) {
+                minQty = int.tryParse(
+                        minReq['greaterThanOrEqualToQuantity'].toString()) ??
+                    0;
+              }
+            }
+
+            // Fallback to parsing summary if minAmount is 0
+            if (minAmount == 0) {
+              final summary = (node['summary'] ?? '').toString().toLowerCase();
+              // Handle various Shopify summary formats:
+              // "Minimum purchase of ₹1,000.00"
+              // "Orders over ₹1,000.00"
+              // "Orders of ₹1,000.00 or more"
+              // "Spend ₹2,500.00"
+              final regex = RegExp(
+                  r'(?:over|above|minimum|minimum purchase of|orders of|spend)\s*[^\d]*([\d,]+(?:\.\d+)?)');
+              final match = regex.firstMatch(summary);
+              if (match != null) {
+                minAmount =
+                    double.tryParse(match.group(1)!.replaceAll(',', '')) ?? 0;
+              }
             }
 
             discounts.add({
-              'code': codeNode['code'],
-              'title': node['title'],
+              'code': firstCodeNode['code'],
+              'title': node['title'] ?? '',
               'summary': node['summary'] ?? '',
               'value': value,
               'type': type,
-              'description': node['summary'] ?? node['title'],
+              'description': node['summary'] ?? node['title'] ?? '',
+              'entitledProducts': entitledProducts,
+              'minAmount': minAmount,
+              'minQty': minQty,
+              'startsAt': node['startsAt'],
+              'appliesOncePerCustomer': node['appliesOncePerCustomer'] ?? false,
+              'customerSelection': node['customerSelection'],
+              'combinesWith': node['combinesWith'],
             });
           }
         }
@@ -1615,18 +1816,73 @@ class ShopifyAdmin {
               ... on DiscountCodeBasic {
                 title
                 status
+                startsAt
                 summary
+                appliesOncePerCustomer
+                customerSelection {
+                  ... on DiscountCustomerAll { allCustomers }
+                }
                 customerGets {
                   value {
-                    ... on DiscountAmount {
-                      amount {
-                        amount
+                    ... on DiscountAmount { amount { amount } }
+                    ... on DiscountPercentage { percentage }
+                  }
+                }
+              }
+              ... on DiscountCodeBxgy {
+                title
+                status
+                startsAt
+                summary
+                appliesOncePerCustomer
+                customerSelection {
+                  ... on DiscountCustomerAll { allCustomers }
+                }
+                customerGets {
+                  value {
+                    ... on DiscountAmount { amount { amount } }
+                    ... on DiscountPercentage { percentage }
+                  }
+                  items {
+                    ... on DiscountProducts {
+                      products(first: 10) {
+                        nodes {
+                          id
+                          title
+                          featuredImage { url }
+                          variants(first: 1) {
+                            nodes { id title price }
+                          }
+                        }
                       }
                     }
-                    ... on DiscountPercentage {
-                      percentage
+                    ... on DiscountCollections {
+                      collections(first: 2) {
+                        nodes {
+                          products(first: 5) {
+                            nodes {
+                              id
+                              title
+                              featuredImage { url }
+                              variants(first: 1) {
+                                nodes { id title price }
+                              }
+                            }
+                          }
+                        }
+                      }
                     }
                   }
+                }
+              }
+              ... on DiscountCodeFreeShipping {
+                title
+                status
+                startsAt
+                summary
+                appliesOncePerCustomer
+                customerSelection {
+                  ... on DiscountCustomerAll { allCustomers }
                 }
               }
             }
@@ -1642,32 +1898,116 @@ class ShopifyAdmin {
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
+        debugPrint("Validate Discount Response: ${res.body}");
+        if (data['errors'] != null) {
+          debugPrint("Shopify GraphQL Errors: ${data['errors']}");
+        }
+
         if (data['data'] != null &&
             data['data']['codeDiscountNodeByCode'] != null) {
-          final discount =
-              data['data']['codeDiscountNodeByCode']['codeDiscount'];
+          final discountNode = data['data']['codeDiscountNodeByCode'];
+          final discount = discountNode['codeDiscount'];
+          if (discount == null) return null;
 
-          if (discount['status'] != 'ACTIVE') return null;
+          final String status =
+              (discount['status'] ?? '').toString().toUpperCase();
+          if (status != 'ACTIVE') return null;
 
-          final valObj = discount['customerGets']['value'];
-          double value = 0;
           String type = 'fixed_amount';
+          dynamic value = 0;
 
-          if (valObj['amount'] != null) {
-            value = double.tryParse(valObj['amount']['amount'].toString()) ?? 0;
-            type = 'fixed_amount';
-          } else if (valObj['percentage'] != null) {
-            value =
-                (double.tryParse(valObj['percentage'].toString()) ?? 0) * 100;
-            type = 'percentage';
+          final customerGets = discount['customerGets'];
+          if (customerGets != null) {
+            final valObj = customerGets['value'];
+            if (valObj != null) {
+              if (valObj['amount'] != null) {
+                value =
+                    double.tryParse(valObj['amount']['amount'].toString()) ?? 0;
+              } else if (valObj['percentage'] != null) {
+                type = 'percentage';
+                value =
+                    (double.tryParse(valObj['percentage'].toString()) ?? 0) *
+                        100;
+              }
+            }
+          }
+
+          List<Map<String, dynamic>> entitledProducts = [];
+          if (customerGets != null && customerGets['items'] != null) {
+            final items = customerGets['items'];
+
+            // Handle Product Entitlements
+            if (items['products'] != null &&
+                items['products']['nodes'] != null) {
+              for (var pro in items['products']['nodes']) {
+                final variants = (pro['variants'] != null &&
+                        pro['variants']['nodes'] != null)
+                    ? pro['variants']['nodes'] as List
+                    : [];
+                final variant = variants.isNotEmpty ? variants[0] : null;
+
+                entitledProducts.add({
+                  'id': pro['id']?.toString().split('/').last ?? '',
+                  'title': pro['title'] ?? '',
+                  'image': pro['featuredImage']?['url'] ?? '',
+                  'variantId': variant != null
+                      ? variant['id']?.toString().split('/').last ?? ''
+                      : '',
+                  'variantTitle': variant != null ? variant['title'] ?? '' : '',
+                  'price': variant != null
+                      ? variant['price']?.toString() ?? '0'
+                      : '0',
+                });
+              }
+            }
+          }
+
+          if (entitledProducts.isNotEmpty) {
+            type = 'special';
+            value = 0;
+          }
+
+          final minReq = discount['minimumRequirement'];
+          double minAmount = 0;
+          int minQty = 0;
+          if (minReq != null) {
+            if (minReq['amount'] != null) {
+              minAmount =
+                  double.tryParse(minReq['amount']['amount'].toString()) ?? 0;
+            } else if (minReq['greaterThanOrEqualToQuantity'] != null) {
+              minQty = int.tryParse(
+                      minReq['greaterThanOrEqualToQuantity'].toString()) ??
+                  0;
+            }
+          }
+
+          // Fallback to parsing summary if minAmount is 0
+          if (minAmount == 0) {
+            final summary =
+                (discount['summary'] ?? '').toString().toLowerCase();
+            final regex = RegExp(
+                r'(?:over|above|minimum|minimum purchase of|orders of|spend)\s*[^\d]*([\d,]+(?:\.\d+)?)');
+            final match = regex.firstMatch(summary);
+            if (match != null) {
+              minAmount =
+                  double.tryParse(match.group(1)!.replaceAll(',', '')) ?? 0;
+            }
           }
 
           return {
             'code': code,
-            'title': discount['title'],
+            'title': discount['title'] ?? '',
             'value': value,
             'type': type,
-            'summary': discount['summary']
+            'description': discount['summary'] ?? discount['title'] ?? '',
+            'entitledProducts': entitledProducts,
+            'minAmount': minAmount,
+            'minQty': minQty,
+            'startsAt': discount['startsAt'],
+            'appliesOncePerCustomer':
+                discount['appliesOncePerCustomer'] ?? false,
+            'customerSelection': discount['customerSelection'],
+            'combinesWith': discount['combinesWith'],
           };
         }
       }

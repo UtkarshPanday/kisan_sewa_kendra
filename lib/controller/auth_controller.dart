@@ -256,31 +256,50 @@ class AuthController {
       };
 
       // Search for existing customer by phone
-      // %2B correctly URL-encodes the + sign, ensuring Shopify correctly matches existing phone numbers
-      final searchRes = await http.get(
+      // Try with +91 first
+      var searchRes = await http.get(
         Uri.parse(
             '$baseUrl/customers/search.json?query=phone:%2B91$phone&limit=1'),
         headers: headers,
       );
 
+      var searchData = searchRes.statusCode == 200 ? jsonDecode(searchRes.body) : {};
+      var customers = searchData['customers'] as List?;
+
+      // If not found, try without +91
+      if (customers == null || customers.isEmpty) {
+        searchRes = await http.get(
+          Uri.parse('$baseUrl/customers/search.json?query=phone:$phone&limit=1'),
+          headers: headers,
+        );
+        searchData = searchRes.statusCode == 200 ? jsonDecode(searchRes.body) : {};
+        customers = searchData['customers'] as List?;
+      }
+
+      // Final fallback: search just the phone digits
+      if (customers == null || customers.isEmpty) {
+        searchRes = await http.get(
+          Uri.parse('$baseUrl/customers/search.json?query=$phone&limit=1'),
+          headers: headers,
+        );
+        searchData = searchRes.statusCode == 200 ? jsonDecode(searchRes.body) : {};
+        customers = searchData['customers'] as List?;
+      }
+
       final prefs = await SharedPreferences.getInstance();
 
-      if (searchRes.statusCode == 200) {
-        final searchData = jsonDecode(searchRes.body);
-        final customers = searchData['customers'] as List?;
-
-        if (customers != null && customers.isNotEmpty) {
-          // Existing customer found
-          final customer = customers[0];
-          await prefs.setString(_keyShopifyId, customer['id'].toString());
-          await prefs.setString(
-              _keyName,
-              '${customer['first_name'] ?? ''} ${customer['last_name'] ?? ''}'
-                  .trim());
-          await prefs.setString(_keyEmail, customer['email'] ?? '');
-          debugPrint(
-              'AuthController: Found existing Shopify customer: ${customer['id']}');
-        } else {
+      if (customers != null && customers.isNotEmpty) {
+        // Existing customer found
+        final customer = customers[0];
+        await prefs.setString(_keyShopifyId, customer['id'].toString());
+        await prefs.setString(
+            _keyName,
+            '${customer['first_name'] ?? ''} ${customer['last_name'] ?? ''}'
+                .trim());
+        await prefs.setString(_keyEmail, customer['email'] ?? '');
+        debugPrint(
+            'AuthController: Found existing Shopify customer: ${customer['id']}');
+      } else {
           // Create new customer
           final createRes = await http.post(
             Uri.parse('$baseUrl/customers.json'),
@@ -307,7 +326,6 @@ class AuthController {
                 'AuthController: Created new Shopify customer: ${customer['id']}');
           }
         }
-      }
     } catch (e) {
       debugPrint('AuthController: Shopify sync error: $e');
       // Non-blocking — app continues even if sync fails

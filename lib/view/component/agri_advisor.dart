@@ -35,7 +35,7 @@ class _AgriAdvisorState extends State<AgriAdvisor> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Text(
-              "At Kisan Sewa Kendra, we understand the unique challenges farmers face. Our Krishi Expert Consultation is designed to provide personalized solutions for your farming needs. Here's what you get:",
+              "At Krishi Bhandar, we understand the unique challenges farmers face. Our Krishi Expert Consultation is designed to provide personalized solutions for your farming needs. Here's what you get:",
               textAlign: TextAlign.justify,
               style: TextStyle(
                 fontSize: 18,
@@ -249,7 +249,7 @@ class _AgriAdvisorState extends State<AgriAdvisor> {
         onPressed: () {
           launchUrlString("https://wa.me/919399022060?text=Hi");
         },
-        child: Icon(
+        child: FaIcon(
           FontAwesomeIcons.whatsapp,
           size: 35,
           color: Colors.white,

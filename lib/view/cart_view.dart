@@ -67,7 +67,7 @@ class _CartViewState extends State<CartView> {
     super.dispose();
   }
 
-  Future<void> _init() async {
+  Future<void> _init({bool skipValidation = false}) async {
     if (!mounted) return;
     setState(() => _isLoading = true);
     final items = await CartController.getCart();
@@ -76,6 +76,63 @@ class _CartViewState extends State<CartView> {
         _cartItems = items;
         _isLoading = false;
       });
+
+      if (!skipValidation) {
+        await _checkCouponValidity();
+      }
+    }
+  }
+
+  Future<void> _checkCouponValidity() async {
+    if (_appliedDiscount == null || _isProcessingOrder) return;
+
+    double requirementSubtotal = 0;
+    int requirementQty = 0;
+
+    final entitledList = _appliedDiscount!['entitledProducts'] as List?;
+
+    for (var item in _cartItems) {
+      bool isEntitled = false;
+      if (entitledList != null) {
+        isEntitled = entitledList.any((e) =>
+            e['id'].toString() == item.productId.toString() ||
+            (e['variantId'] != null &&
+                e['variantId'].toString() == item.id.toString()));
+      }
+
+      if (!isEntitled) {
+        double price =
+            double.tryParse(item.price.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+        requirementSubtotal += price * item.qty;
+        requirementQty += item.qty;
+      }
+    }
+
+    double minAmount =
+        double.tryParse(_appliedDiscount!['minAmount']?.toString() ?? '0') ?? 0;
+    int minQty =
+        int.tryParse(_appliedDiscount!['minQty']?.toString() ?? '0') ?? 0;
+
+    bool stillValid = true;
+    if (minAmount > 0 && requirementSubtotal < minAmount) stillValid = false;
+    if (minQty > 0 && requirementQty < minQty) stillValid = false;
+
+    // For BXGY (special), if there are no "Buy" items left, it's invalid
+    if (_appliedDiscount!['type'] == 'special' && requirementQty == 0) {
+      stillValid = false;
+    }
+
+    if (!stillValid) {
+      await _removeDiscount();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Coupon removed: requirements not met"),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -90,6 +147,32 @@ class _CartViewState extends State<CartView> {
       }
       await _init();
     }
+  }
+
+  Future<void> _removeDiscount() async {
+    if (_appliedDiscount == null) return;
+
+    if (_appliedDiscount!['type'] == 'special') {
+      final entitledList = _appliedDiscount!['entitledProducts'] as List?;
+      if (entitledList != null && entitledList.isNotEmpty) {
+        setState(() => _isLoading = true);
+        for (var item in _cartItems) {
+          bool isEntitled = entitledList.any((e) =>
+              e['id'].toString() == item.productId.toString() ||
+              (e['variantId'] != null &&
+                  e['variantId'].toString() == item.id.toString()));
+          if (isEntitled) {
+            await CartController.updateQty(item.id, 0);
+          }
+        }
+      }
+    }
+
+    setState(() {
+      _appliedDiscount = null;
+    });
+    await _init(skipValidation: true);
+    HapticFeedback.lightImpact();
   }
 
   Future<void> _clearCart() async {
@@ -145,6 +228,43 @@ class _CartViewState extends State<CartView> {
       total += price * item.qty;
     }
     return total;
+  }
+
+  double _getDiscountAmount() {
+    if (_appliedDiscount == null) return 0;
+    double subtotal = _getTotalValue();
+    double discount = 0;
+
+    if (_appliedDiscount!['type'] == 'special') {
+      // BXGY logic: make 1 unit of entitled product free
+      final entitledList = _appliedDiscount!['entitledProducts'] as List?;
+      if (entitledList != null && entitledList.isNotEmpty) {
+        for (var item in _cartItems) {
+          bool isEntitled = entitledList.any((e) =>
+              e['id'].toString() == item.productId.toString() ||
+              (e['variantId'] != null &&
+                  e['variantId'].toString() == item.id.toString()));
+          if (isEntitled) {
+            double itemPrice =
+                double.tryParse(item.price.replaceAll(RegExp(r'[^\d.]'), '')) ??
+                    0;
+            discount = itemPrice;
+            break;
+          }
+        }
+      }
+    } else {
+      discount =
+          double.tryParse(_appliedDiscount!['value']?.toString() ?? '0') ?? 0;
+      if (_appliedDiscount!['type'] == 'percentage') {
+        discount = (subtotal * discount) / 100;
+      }
+    }
+    return discount;
+  }
+
+  double _getFinalTotal() {
+    return _getTotalValue() - _getDiscountAmount();
   }
 
   @override
@@ -475,52 +595,102 @@ class _CartViewState extends State<CartView> {
       itemCount: _cartItems.length,
       itemBuilder: (context, index) {
         final item = _cartItems[index];
+        bool isFreeItem = false;
+        if (_appliedDiscount != null &&
+            _appliedDiscount!['type'] == 'special') {
+          final entitledList = _appliedDiscount!['entitledProducts'] as List?;
+          if (entitledList != null && entitledList.isNotEmpty) {
+            try {
+              final freeItem = _cartItems.firstWhere((it) => entitledList.any(
+                  (e) =>
+                      e['id'].toString() == it.productId.toString() ||
+                      (e['variantId'] != null &&
+                          e['variantId'].toString() == it.id.toString())));
+              if (freeItem.id == item.id) isFreeItem = true;
+            } catch (_) {}
+          }
+        }
+
         return Dismissible(
           key: Key(item.id),
-          direction: DismissDirection.endToStart,
-          onDismissed: (_) {
-            _updateQty(item.id, -item.qty);
-            HapticFeedback.mediumImpact();
-          },
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 20),
-            margin: const EdgeInsets.only(bottom: 8),
-            decoration: BoxDecoration(
-              color: Colors.redAccent.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(Icons.delete_sweep_rounded,
-                color: Colors.white, size: 28),
-          ),
-          child: _buildCartItem(item),
+          direction:
+              isFreeItem ? DismissDirection.none : DismissDirection.endToStart,
+          onDismissed: isFreeItem
+              ? null
+              : (_) {
+                  _updateQty(item.id, -item.qty);
+                  HapticFeedback.mediumImpact();
+                },
+          background: isFreeItem
+              ? null
+              : Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.delete_sweep_rounded,
+                      color: Colors.white, size: 28),
+                ),
+          child: _buildCartItem(item, isFreeItem),
         );
       },
     );
   }
 
-  Widget _buildCartItem(CartItem item) {
+  Widget _buildCartItem(CartItem item, bool isFreeRow) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withOpacity(0.05)),
+        border: Border.all(
+            color: isFreeRow
+                ? Constants.baseColor.withOpacity(0.2)
+                : Colors.grey.withOpacity(0.05)),
       ),
       child: Row(
         children: [
-          Container(
-            width: 75,
-            height: 75,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: const Color(0xFFF9FBF9),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: KskNetworkImage(item.image, fit: BoxFit.cover),
-            ),
+          Stack(
+            children: [
+              Container(
+                width: 75,
+                height: 75,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFFF9FBF9),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: KskNetworkImage(item.image, fit: BoxFit.cover),
+                ),
+              ),
+              if (isFreeRow)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.orange,
+                      borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(12),
+                          bottomRight: Radius.circular(8)),
+                    ),
+                    child: Text(
+                      AppLocalizations.of(context)!.free.toUpperCase(),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -543,14 +713,15 @@ class _CartViewState extends State<CartView> {
                         ),
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => _updateQty(item.id, -item.qty),
-                      icon: const Icon(Icons.delete_outline_rounded,
-                          size: 18, color: Colors.redAccent),
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
+                    if (!isFreeRow)
+                      IconButton(
+                        onPressed: () => _updateQty(item.id, -item.qty),
+                        icon: const Icon(Icons.delete_outline_rounded,
+                            size: 18, color: Colors.redAccent),
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
                   ],
                 ),
                 Text(
@@ -570,15 +741,34 @@ class _CartViewState extends State<CartView> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      "${Constants.inr}${item.price}",
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                        color: const Color(0xFF1E1E1E),
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isFreeRow)
+                          Text(
+                            "${Constants.inr}${item.price}",
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                              decoration: TextDecoration.lineThrough,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                        Text(
+                          isFreeRow
+                              ? AppLocalizations.of(context)!.free
+                              : "${Constants.inr}${item.price}",
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            color: isFreeRow
+                                ? Colors.orange
+                                : const Color(0xFF1E1E1E),
+                          ),
+                        ),
+                      ],
                     ),
-                    _buildQtySelector(item),
+                    _buildQtySelector(item, isFreeRow),
                   ],
                 ),
               ],
@@ -589,7 +779,24 @@ class _CartViewState extends State<CartView> {
     );
   }
 
-  Widget _buildQtySelector(CartItem item) {
+  Widget _buildQtySelector(CartItem item, bool isFreeRow) {
+    if (isFreeRow) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Constants.baseColor.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          "Qty: ${item.qty}",
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+            color: Constants.baseColor,
+          ),
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       decoration: BoxDecoration(
@@ -645,9 +852,20 @@ class _CartViewState extends State<CartView> {
   void _selectCoupon() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const CouponsView()),
+      MaterialPageRoute(
+        builder: (_) => CouponsView(
+          subtotal: _getTotalValue(),
+          totalItems: _cartItems.length,
+        ),
+      ),
     );
-    if (result != null) setState(() => _appliedDiscount = result);
+    if (result != null) {
+      if (_appliedDiscount != null) {
+        await _removeDiscount();
+      }
+      setState(() => _appliedDiscount = result);
+      await _init(); // Refresh to show newly added free products
+    }
   }
 
   Widget _buildCouponSection() {
@@ -715,7 +933,7 @@ class _CartViewState extends State<CartView> {
             ),
             if (_appliedDiscount != null)
               GestureDetector(
-                onTap: () => setState(() => _appliedDiscount = null),
+                onTap: _removeDiscount,
                 child: const Icon(Icons.close_rounded,
                     size: 16, color: Colors.red),
               )
@@ -730,14 +948,8 @@ class _CartViewState extends State<CartView> {
 
   Widget _buildBillSummary() {
     double subtotal = _getTotalValue();
-    double discount = _appliedDiscount != null
-        ? (double.tryParse(_appliedDiscount!['value']?.toString() ?? '0') ?? 0)
-        : 0;
-    if (_appliedDiscount != null &&
-        _appliedDiscount!['value_type'] == 'percentage') {
-      discount = (subtotal * discount) / 100;
-    }
-    double total = subtotal - discount;
+    double discount = _getDiscountAmount();
+    double total = _getFinalTotal();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1009,15 +1221,7 @@ class _CartViewState extends State<CartView> {
   }
 
   Widget _buildIntegratedCheckoutBar() {
-    double subtotal = _getTotalValue();
-    double discount = _appliedDiscount != null
-        ? (double.tryParse(_appliedDiscount!['value']?.toString() ?? '0') ?? 0)
-        : 0;
-    if (_appliedDiscount != null &&
-        _appliedDiscount!['value_type'] == 'percentage') {
-      discount = (subtotal * discount) / 100;
-    }
-    double finalTotal = subtotal - discount;
+    double finalTotal = _getFinalTotal();
 
     return Container(
         padding: EdgeInsets.fromLTRB(
@@ -1155,9 +1359,7 @@ class _CartViewState extends State<CartView> {
                 AppLocalizations.of(context)!.onlinePayment,
                 AppLocalizations.of(context)!.payMethodSubtitle,
                 Constants.baseColor,
-                discount: _appliedDiscount == null
-                    ? "₹${Constants.payOnlineDiscountAmount.toInt()} OFF"
-                    : null, () {
+                discount: "3% OFF", () {
               Navigator.pop(context);
               _payOnline();
             }),
@@ -1170,36 +1372,6 @@ class _CartViewState extends State<CartView> {
               Navigator.pop(context);
               _createShopifyOrder(isCod: true);
             }),
-            if (_appliedDiscount != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFDE7),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFFFF59D)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_rounded,
-                        color: Colors.amber[900], size: 14),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        AppLocalizations.of(context)!
-                            .couponActiveOnlineDisabled,
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.amber[900],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
             const SizedBox(height: 8),
           ],
         ),
@@ -1298,20 +1470,9 @@ class _CartViewState extends State<CartView> {
   void _handleExternalWallet(ExternalWalletResponse response) {}
 
   void _payOnline() async {
-    double subtotal = _getTotalValue();
-    double discount = 0;
-    if (_appliedDiscount != null) {
-      discount =
-          (double.tryParse(_appliedDiscount!['value']?.toString() ?? '0') ?? 0);
-      if (_appliedDiscount!['value_type'] == 'percentage') {
-        discount = (subtotal * discount) / 100;
-      }
-    }
-
-    double finalTotal = subtotal - discount;
-    if (_appliedDiscount == null) {
-      finalTotal -= Constants.payOnlineDiscountAmount;
-    }
+    double finalTotal = _getFinalTotal();
+    // Apply 3% online discount on top of any existing discount
+    finalTotal = finalTotal * 0.97;
 
     // Prioritize phone from selected address, fallback to login phone
     String? contactPhone = _selectedAddress?['phone']?.toString();
@@ -1383,16 +1544,11 @@ class _CartViewState extends State<CartView> {
       {String? paymentId, bool isCod = false}) async {
     setState(() => _isProcessingOrder = true);
 
-    // Calculate final total for the success screen
-    double subtotal = _getTotalValue();
-    double discount = _appliedDiscount != null
-        ? (double.tryParse(_appliedDiscount!['value']?.toString() ?? '0') ?? 0)
-        : 0;
-    if (_appliedDiscount != null &&
-        _appliedDiscount!['value_type'] == 'percentage') {
-      discount = (subtotal * discount) / 100;
+    double finalTotal = _getFinalTotal();
+    if (!isCod) {
+      // Apply 3% online discount for prepaid orders
+      finalTotal = finalTotal * 0.97;
     }
-    double finalTotal = subtotal - discount;
 
     // Prepare line items
     final List<Map<String, dynamic>> items = _cartItems
@@ -1412,8 +1568,14 @@ class _CartViewState extends State<CartView> {
       return;
     }
 
+    String? contactEmail = await AuthController.getSavedEmail();
+    if (contactEmail == null || contactEmail.isEmpty) {
+      contactEmail = "customer@krishibhandar.com";
+    }
+
     final orderRes = await ShopifyAPI.createOrder(
       customerId: customerId,
+      email: contactEmail,
       lineItems: items,
       shippingAddress: _selectedAddress!,
       totalAmount: finalTotal,
@@ -1441,8 +1603,12 @@ class _CartViewState extends State<CartView> {
     } else {
       if (mounted) {
         setState(() => _isProcessingOrder = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text("Failed to create order. Please try again.")));
+        String errorMsg = "Failed to create order.";
+        if (orderRes.containsKey('error')) {
+          errorMsg += " ${orderRes['error']}";
+        }
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(errorMsg)));
       }
     }
   }

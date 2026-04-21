@@ -9,6 +9,7 @@ import 'app_localizations_en.dart';
 import 'app_localizations_hi.dart';
 import 'app_localizations_mr.dart';
 import 'app_localizations_ta.dart';
+import 'app_localizations_te.dart';
 
 // ignore_for_file: type=lint
 
@@ -99,7 +100,8 @@ abstract class AppLocalizations {
     Locale('en'),
     Locale('hi'),
     Locale('mr'),
-    Locale('ta')
+    Locale('ta'),
+    Locale('te')
   ];
 
   /// No description provided for @home.
@@ -1005,7 +1007,7 @@ abstract class AppLocalizations {
   /// No description provided for @kisanSewaKendra.
   ///
   /// In en, this message translates to:
-  /// **'Kisan Sewa Kendra'**
+  /// **'Krishi Bhandar'**
   String get kisanSewaKendra;
 
   /// No description provided for @amountPending.
@@ -1673,6 +1675,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'CANCEL'**
   String get cancel;
+
+  /// No description provided for @addFollowingToGetFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Add following to get free:'**
+  String get addFollowingToGetFree;
 }
 
 class _AppLocalizationsDelegate
@@ -1686,7 +1694,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['en', 'hi', 'mr', 'ta'].contains(locale.languageCode);
+      <String>['en', 'hi', 'mr', 'ta', 'te'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -1703,6 +1711,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsMr();
     case 'ta':
       return AppLocalizationsTa();
+    case 'te':
+      return AppLocalizationsTe();
   }
 
   throw FlutterError(
