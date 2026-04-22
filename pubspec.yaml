@@ -3,7 +3,7 @@ description: "Krishi Bhandar shopify website's App"
 
 publish_to: 'none'
 
-version: 3.0.0+18
+version: 3.0.1+19
 
 environment:
   sdk: ^3.5.3
