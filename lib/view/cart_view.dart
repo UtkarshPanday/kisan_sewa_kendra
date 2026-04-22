@@ -1543,20 +1543,24 @@ class _CartViewState extends State<CartView> {
   Future<void> _createShopifyOrder(
       {String? paymentId, bool isCod = false}) async {
     setState(() => _isProcessingOrder = true);
+    double subtotal = _getTotalValue();
+    double couponDiscount = _getDiscountAmount();
+    double onlineDiscount = isCod ? 0 : ((subtotal - couponDiscount) * 0.03);
+    double finalTotal = subtotal - couponDiscount - onlineDiscount;
+    double totalDiscount = couponDiscount + onlineDiscount;
 
-    double finalTotal = _getFinalTotal();
-    if (!isCod) {
-      // Apply 3% online discount for prepaid orders
-      finalTotal = finalTotal * 0.97;
-    }
+    // We send ORIGINAL prices to Shopify so the subtotal looks correct.
+    // The discount is handled at the order level via discount_codes and total_discounts.
+    final List<Map<String, dynamic>> items = _cartItems.map((item) {
+      double originalPrice =
+          double.tryParse(item.price.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
 
-    // Prepare line items
-    final List<Map<String, dynamic>> items = _cartItems
-        .map((item) => {
-              "variant_id": item.id,
-              "quantity": item.qty,
-            })
-        .toList();
+      return {
+        "variant_id": item.id,
+        "quantity": item.qty,
+        "price": originalPrice.toStringAsFixed(2),
+      };
+    }).toList();
 
     final String? customerId = await AuthController.getShopifyCustomerId();
     if (customerId == null) {
@@ -1579,6 +1583,8 @@ class _CartViewState extends State<CartView> {
       lineItems: items,
       shippingAddress: _selectedAddress!,
       totalAmount: finalTotal,
+      discountCode: _appliedDiscount?['code']?.toString() ?? (onlineDiscount > 0 ? "ONLINE-DISCOUNT" : null),
+      discountAmount: totalDiscount,
       paymentId: paymentId,
       isCod: isCod,
     );

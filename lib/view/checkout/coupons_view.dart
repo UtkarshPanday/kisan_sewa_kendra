@@ -115,9 +115,23 @@ class _CouponsViewState extends State<CouponsView> {
     }
 
     final results = await ShopifyAdmin.getAvailableDiscounts();
+
+    // Filter out coupons that have already been used by this customer
+    final filteredResults = results.where((coupon) {
+      if (coupon['appliesOncePerCustomer'] == true &&
+          _customerOrders.isNotEmpty) {
+        String code = coupon['code'].toString().toUpperCase();
+        for (var order in _customerOrders) {
+          final usedCodes = order['discount_codes'] as List? ?? [];
+          if (usedCodes.contains(code)) return false;
+        }
+      }
+      return true;
+    }).toList();
+
     if (mounted) {
       setState(() {
-        _availableCoupons = results;
+        _availableCoupons = filteredResults;
         _isFetching = false;
       });
     }

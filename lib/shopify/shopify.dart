@@ -80,6 +80,13 @@ class ShopifyAPI {
               cancelledAt
               closedAt
               confirmed
+              discountApplications(first: 10) {
+                nodes {
+                  ... on DiscountCodeApplication {
+                    code
+                  }
+                }
+              }
               lineItems(first: 50) {
                 nodes {
                   title
@@ -137,6 +144,11 @@ class ShopifyAPI {
                     'INR';
               }
 
+              final usedCodes = (node['discountApplications']?['nodes'] as List? ?? [])
+                  .map((d) => d['code']?.toString().toUpperCase())
+                  .where((c) => c != null)
+                  .toList();
+
               orders.add({
                 'id': node['id'].toString(),
                 'order_number': node['name'].toString().replaceAll('#', ''),
@@ -146,6 +158,7 @@ class ShopifyAPI {
                         ?['amount']
                     ?.toString(),
                 'currency': currency,
+                'discount_codes': usedCodes,
                 'fulfillment_status':
                     node['displayFulfillmentStatus']?.toLowerCase() ??
                         'pending',
@@ -515,6 +528,8 @@ class ShopifyAPI {
     required List<Map<String, dynamic>> lineItems,
     required Map<String, dynamic> shippingAddress,
     required double totalAmount,
+    String? discountCode,
+    double? discountAmount,
     String? paymentId,
     bool isCod = false,
   }) async {
@@ -524,6 +539,7 @@ class ShopifyAPI {
         return {
           "variant_id": int.parse(vid.split('/').last),
           "quantity": item['quantity'],
+          "price": item['price'],
         };
       }).toList();
 
@@ -571,6 +587,20 @@ class ShopifyAPI {
         "inventory_behavior": "decrement_ignoring_policy",
         "send_receipt": true,
       };
+      
+      if (discountCode != null && discountCode.isNotEmpty) {
+        orderPayload["discount_codes"] = [
+          {
+            "code": discountCode,
+            "amount": discountAmount?.toStringAsFixed(2) ?? "0.00",
+            "type": "fixed_amount"
+          }
+        ];
+      }
+      
+      if (discountAmount != null && discountAmount > 0) {
+        orderPayload["total_discounts"] = discountAmount.toStringAsFixed(2);
+      }
 
       debugPrint(
           "DEBUG: Shopify Order Payload --> ${jsonEncode(orderPayload)}");
