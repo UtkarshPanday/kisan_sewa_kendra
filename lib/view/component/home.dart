@@ -654,7 +654,7 @@ class _HomeState extends State<Home> {
                 ),
                 const SizedBox(height: 25),
                 Text(
-                  "© ${DateTime.now().year} Kisan Sewa Kendra",
+                  "© ${DateTime.now().year} Krishi Bhandar",
                   style: TextStyle(
                       color: Colors.grey[400],
                       fontSize: 11,

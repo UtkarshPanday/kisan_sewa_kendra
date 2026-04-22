@@ -102,16 +102,21 @@ class Constants {
     context,
   ) async {
     try {
-      languageList = await Shopify.getLocalization(
-        context,
-      );
+      final allLangs = await Shopify.getLocalization(context);
+      final allowedIsos = ['HI', 'EN', 'TE'];
 
-      // Ensure Marathi is available if not already in the list
-      if (!languageList.any((l) => l.iso.toUpperCase() == 'MR')) {
-        languageList.add(LocalizationModel(name: 'मराठी', iso: 'MR'));
+      languageList = allLangs
+          .where((l) => allowedIsos.contains(l.iso.toUpperCase()))
+          .toList();
+
+      if (!languageList.any((l) => l.iso.toUpperCase() == 'HI')) {
+        languageList.add(LocalizationModel(name: 'हिंदी', iso: 'HI'));
       }
-      if (!languageList.any((l) => l.iso.toUpperCase() == 'TA')) {
-        languageList.add(LocalizationModel(name: 'தமிழ்', iso: 'TA'));
+      if (!languageList.any((l) => l.iso.toUpperCase() == 'EN')) {
+        languageList.add(LocalizationModel(name: 'English', iso: 'EN'));
+      }
+      if (!languageList.any((l) => l.iso.toUpperCase() == 'TE')) {
+        languageList.add(LocalizationModel(name: 'తెలుగు', iso: 'TE'));
       }
 
       lang = (await Pref.getPref(PrefKey.lang)) ?? "EN";

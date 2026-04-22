@@ -379,7 +379,7 @@ class _SupportViewState extends State<SupportView>
                           color: Colors.white,
                         ),
                       )
-                    : const Icon(FontAwesomeIcons.whatsapp, size: 18),
+                    : const FaIcon(FontAwesomeIcons.whatsapp, size: 18),
                 label: Text(
                   _isLoading
                       ? AppLocalizations.of(context)!.sending

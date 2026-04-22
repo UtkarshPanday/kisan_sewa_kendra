@@ -21,7 +21,8 @@ import '../controller/pref.dart';
 import 'cart_summary_bar.dart';
 
 class ProductsGrid extends StatefulWidget {
-  final String id;
+  final String? id;
+  final String? query;
   final int? limit;
   final bool isFilter;
   final bool shrinkWrap;
@@ -30,7 +31,8 @@ class ProductsGrid extends StatefulWidget {
 
   const ProductsGrid({
     super.key,
-    required this.id,
+    this.id,
+    this.query,
     this.limit,
     this.isFilter = false,
     this.shrinkWrap = true,
@@ -84,7 +86,8 @@ class ProductsGridState extends State<ProductsGrid>
 
   Future<void> _init() async {
     if (!mounted) return;
-    if (widget.id.isEmpty || widget.id == "0") {
+    if ((widget.id == null || widget.id!.isEmpty || widget.id == "0") &&
+        (widget.query == null || widget.query!.isEmpty)) {
       setState(() => _isLoading = false);
       return;
     }
@@ -94,20 +97,27 @@ class ProductsGridState extends State<ProductsGrid>
     });
 
     try {
-      final result = await Shopify.getProductsFromCollections(
-        context,
-        id: widget.id,
-        limit: widget.limit != null
-            ? (widget.limit! + (widget.excludeIds?.length ?? 0))
-            : null,
-      );
+      List<ProductModel> list = [];
+
+      if (widget.id != null && widget.id!.isNotEmpty && widget.id != "0") {
+        final result = await Shopify.getProductsFromCollections(
+          context,
+          id: widget.id!,
+          limit: widget.limit != null
+              ? (widget.limit! + (widget.excludeIds?.length ?? 0))
+              : null,
+        );
+        list = (result['product'] as List<dynamic>?)?.cast<ProductModel>() ??
+            <ProductModel>[];
+      } else if (widget.query != null && widget.query!.isNotEmpty) {
+        list = await Shopify.fetchSearchResults(
+          context,
+          query: widget.query!,
+        );
+      }
 
       if (mounted) {
         setState(() {
-          List<ProductModel> list =
-              (result['product'] as List<dynamic>?)?.cast<ProductModel>() ??
-                  <ProductModel>[];
-
           // Filter out excluded IDs
           if (widget.excludeIds != null) {
             list =

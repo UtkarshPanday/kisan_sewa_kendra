@@ -689,7 +689,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                           children: [
                             const Icon(Icons.cancel_outlined, size: 16),
                             const SizedBox(width: 8),
-                            Text(AppLocalizations.of(context)!.cancelled,
+                            Text(AppLocalizations.of(context)!.cancelOrder,
                                 style: GoogleFonts.inter(
                                     fontWeight: FontWeight.w700, fontSize: 13)),
                           ],

@@ -4,8 +4,12 @@ import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kisan_sewa_kendra/components/cart_summary_bar.dart';
 import 'package:kisan_sewa_kendra/components/products_grid.dart';
+import 'package:kisan_sewa_kendra/components/search_delegate.dart';
 import 'package:kisan_sewa_kendra/l10n/app_localizations.dart';
 import 'package:kisan_sewa_kendra/view/cart_view.dart';
+import 'package:kisan_sewa_kendra/view/collection_view.dart';
+import 'package:kisan_sewa_kendra/view/component/categories.dart';
+import 'package:kisan_sewa_kendra/view/search_results_view.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -714,7 +718,7 @@ class _ProductViewState extends State<ProductView>
                 Container(height: 6, color: const Color(0xFFF4F6F8)),
 
                 // --- How to Use ---
-                Container(color: Colors.white, child: _buildHowToUseSection()),
+                // Container(color: Colors.white, child: _buildHowToUseSection()),
 
                 Container(height: 6, color: const Color(0xFFF4F6F8)),
 
@@ -748,11 +752,28 @@ class _ProductViewState extends State<ProductView>
                                   color: Colors.black)),
                         ),
                         const SizedBox(width: 12),
-                        Text(AppLocalizations.of(context)!.viewAll,
-                            style: TextStyle(
-                                color: Constants.baseColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14)),
+                        GestureDetector(
+                          onTap: () {
+                            if (product.productType.isNotEmpty) {
+                              Routers.goTO(context,
+                                  toBody: SearchResultsView(
+                                      query: product.productType,
+                                      title: product.productType));
+                            } else if (product.collectionId != null &&
+                                product.collectionId!.isNotEmpty) {
+                              Routers.goTO(context,
+                                  toBody: CollectionView(
+                                      collectionId: product.collectionId!));
+                            } else {
+                              Routers.goTO(context, toBody: const Categories());
+                            }
+                          },
+                          child: Text(AppLocalizations.of(context)!.viewAll,
+                              style: TextStyle(
+                                  color: Constants.baseColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14)),
+                        ),
                       ],
                     ),
                   ),

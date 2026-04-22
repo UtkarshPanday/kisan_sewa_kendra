@@ -10,6 +10,8 @@ class ProductModel {
   final List<VariantModel> variants;
   final List<String> images;
   final String? image;
+  final String? collectionId;
+
 
   ProductModel({
     required this.id,
@@ -21,6 +23,7 @@ class ProductModel {
     required this.variants,
     required this.images,
     this.image,
+    this.collectionId,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -38,6 +41,7 @@ class ProductModel {
           .map((e) => e is Map ? e['url'].toString() : e.toString())
           .toList(),
       image: json['image'] != null ? (json['image'] is Map ? json['image']['url'] : json['image']) : null,
+      collectionId: json['collectionId']?.toString(),
     );
   }
 
@@ -52,6 +56,7 @@ class ProductModel {
       'variants': variants.map((v) => v.toJson()).toList(),
       'images': images,
       'image': image,
+      'collectionId': collectionId,
     };
   }
 }

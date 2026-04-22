@@ -150,7 +150,7 @@
   "deliveringTo": "{name} पर डिलीवरी",
   "orderSuccessMsg": "{title} के साथ खरीदारी करने के लिए धन्यवाद। आपके ऑर्डर की पुष्टि हो गई है।",
   "orderSuccessTitle": "ऑर्डर सफल",
-  "kisanSewaKendra": "किसान सेवा केंद्र",
+  "kisanSewaKendra": "कृषि भंडार",
   "amountPending": "बकाया राशि",
   "paymentMethod": "भुगतान विधि",
   "cod": "डिलीवरी पर नकद (COD)",
@@ -261,5 +261,6 @@
   "clearCart": "सभी हटाएं",
   "clearCartConfirm": "कार्ट खाली करें?",
   "clearCartConfirmMsg": "क्या आप वाकई अपनी कार्ट से सभी आइटम हटाना चाहते हैं?",
-  "cancel": "रद्द करें"
+  "cancel": "रद्द करें",
+  "addFollowingToGetFree": "मुफ्त पाने के लिए निम्नलिखित जोड़ें:"
 }

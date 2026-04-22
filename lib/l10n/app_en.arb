@@ -150,7 +150,7 @@
   "deliveringTo": "Delivering to {name}",
   "orderSuccessMsg": "Thank you for shopping with {title}. Your order has been confirmed.",
   "orderSuccessTitle": "Order Success",
-  "kisanSewaKendra": "Kisan Sewa Kendra",
+  "kisanSewaKendra": "Krishi Bhandar",
   "amountPending": "Amount Pending",
   "paymentMethod": "Payment Method",
   "cod": "Cash on Delivery",
@@ -261,5 +261,6 @@
   "clearCart": "Clear All",
   "clearCartConfirm": "Clear Cart?",
   "clearCartConfirmMsg": "Are you sure you want to remove all items from your cart?",
-  "cancel": "CANCEL"
+  "cancel": "CANCEL",
+  "addFollowingToGetFree": "Add following to get free:"
 }

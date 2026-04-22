@@ -504,7 +504,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get orderSuccessTitle => 'ஆர்டர் வெற்றி';
 
   @override
-  String get kisanSewaKendra => 'கிசான் சேவா கேந்திரா';
+  String get kisanSewaKendra => 'Krishi Bhandar';
 
   @override
   String get amountPending => 'நிலுவைத் தொகை';
@@ -855,4 +855,7 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get cancel => 'ரத்து';
+
+  @override
+  String get addFollowingToGetFree => 'Add following to get free:';
 }

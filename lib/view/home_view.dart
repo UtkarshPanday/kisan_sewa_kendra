@@ -114,16 +114,16 @@ class _MyHomePageState extends State<MyHomePage>
             unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
             items: [
               BottomNavigationBarItem(
-                  icon: const Icon(FontAwesomeIcons.house, size: 18),
+                  icon: const FaIcon(FontAwesomeIcons.house, size: 18),
                   label: AppLocalizations.of(context)!.home),
               BottomNavigationBarItem(
-                  icon: const Icon(FontAwesomeIcons.list, size: 18),
+                  icon: const FaIcon(FontAwesomeIcons.list, size: 18),
                   label: AppLocalizations.of(context)!.categories),
               BottomNavigationBarItem(
-                  icon: const Icon(FontAwesomeIcons.bagShopping, size: 18),
+                  icon: const FaIcon(FontAwesomeIcons.bagShopping, size: 18),
                   label: AppLocalizations.of(context)!.myOrders),
               BottomNavigationBarItem(
-                  icon: const Icon(FontAwesomeIcons.headset, size: 18),
+                  icon: const FaIcon(FontAwesomeIcons.headset, size: 18),
                   label: AppLocalizations.of(context)!.support),
             ],
           ),
