@@ -3,6 +3,7 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:kisan_sewa_kendra/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 enum UpdateType { none, optional, force }
@@ -114,14 +115,14 @@ class UpdateService {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    isForce ? "Update Required" : "Update Available",
+                    isForce ? AppLocalizations.of(context)!.updateRequired : AppLocalizations.of(context)!.updateAvailable,
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.black87),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     isForce 
-                      ? "A critical update is available. Please update the app to continue using our services."
-                      : "A new version of the app is available with new features and improvements.",
+                      ? AppLocalizations.of(context)!.forceUpdateMsg
+                      : AppLocalizations.of(context)!.optionalUpdateMsg,
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontSize: 15, color: Colors.black54, height: 1.5),
                   ),
@@ -139,9 +140,9 @@ class UpdateService {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 padding: const EdgeInsets.symmetric(vertical: 16),
                               ),
-                              child: const Text(
-                                "LATER",
-                                style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF26842C)),
+                              child: Text(
+                                AppLocalizations.of(context)!.later,
+                                style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF26842C)),
                               ),
                             ),
                           ),
@@ -156,9 +157,9 @@ class UpdateService {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
-                          child: const Text(
-                            "UPDATE NOW",
-                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: 1),
+                          child: Text(
+                            AppLocalizations.of(context)!.updateNow,
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: 1),
                           ),
                         ),
                       ),

@@ -3,15 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shimmer/shimmer.dart';
 
+import '../controller/language_controller.dart';
 import '../model/localization_model.dart';
 import '../shopify/shopify.dart';
 import 'pref.dart';
 
 class Constants {
+  static late LanguageController languageController;
   static String cdnUrl =
       "https://cdn.shopify.com/s/files/1/0627/9204/0601/files/";
   static String inr = "₹", title = "Krishi Bhandar";
   static Color baseColor = const Color(0xff26842c);
+  static String razorpayKey = dotenv.get('RAZORPAY_KEY', fallback: "");
 
   static String shopifyAccessToken =
       dotenv.get('SHOPIFY_ADMIN_ACCESS_TOKEN', fallback: "");
@@ -102,6 +105,14 @@ class Constants {
       languageList = await Shopify.getLocalization(
         context,
       );
+
+      // Ensure Marathi is available if not already in the list
+      if (!languageList.any((l) => l.iso.toUpperCase() == 'MR')) {
+        languageList.add(LocalizationModel(name: 'मराठी', iso: 'MR'));
+      }
+      if (!languageList.any((l) => l.iso.toUpperCase() == 'TA')) {
+        languageList.add(LocalizationModel(name: 'தமிழ்', iso: 'TA'));
+      }
 
       lang = (await Pref.getPref(PrefKey.lang)) ?? "EN";
 

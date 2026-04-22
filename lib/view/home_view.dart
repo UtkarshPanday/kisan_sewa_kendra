@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:kisan_sewa_kendra/components/cart_summary_bar.dart';
+import 'package:kisan_sewa_kendra/l10n/app_localizations.dart';
 import 'package:kisan_sewa_kendra/view/support_view.dart';
 import 'package:kisan_sewa_kendra/view/policy_pages.dart';
 
@@ -19,7 +22,8 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> with AutomaticKeepAliveClientMixin {
+class _MyHomePageState extends State<MyHomePage>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
@@ -45,39 +49,84 @@ class _MyHomePageState extends State<MyHomePage> with AutomaticKeepAliveClientMi
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
-      backgroundColor: const Color(0xFFFBFBFB),
-      appBar: const KskAppbar(),
-      drawer: _buildModernDrawer(context),
-      body: !_isDataLoaded 
-        ? const Center(child: CircularProgressIndicator()) 
-        : [
-            Home(scrollController: _scrollController),
-            const Categories(),
-            const OrderView(),
-            const SupportView(),
-          ][_currentIndex],
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, -2))
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (value) {
-            setState(() => _currentIndex = value);
-          },
-          selectedFontSize: 12,
-          unselectedFontSize: 12,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w900),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
-          items: const [
-            BottomNavigationBarItem(icon: Icon(FontAwesomeIcons.house, size: 18), label: "Home"),
-            BottomNavigationBarItem(icon: Icon(FontAwesomeIcons.list, size: 18), label: "Categories"),
-            BottomNavigationBarItem(icon: Icon(FontAwesomeIcons.bagShopping, size: 18), label: "My Orders"),
-            BottomNavigationBarItem(icon: Icon(FontAwesomeIcons.headset, size: 18), label: "Support"),
-          ],
+    return WillPopScope(
+      onWillPop: () async {
+        if (_currentIndex != 0) {
+          setState(() {
+            _currentIndex = 0;
+          });
+          return false; // Prevent pop, stay in app
+        }
+        return true; // Allow pop, exit app
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xffF9FBF9),
+        extendBodyBehindAppBar: false,
+        appBar: _currentIndex == 0 ? const KskAppbar() : null,
+        drawer: _buildModernDrawer(context),
+        body: !_isDataLoaded
+            ? AnnotatedRegion<SystemUiOverlayStyle>(
+                value: SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  statusBarIconBrightness: Brightness.dark,
+                  statusBarBrightness: Brightness.light,
+                ),
+                child: const Center(child: CircularProgressIndicator()),
+              )
+            : Stack(
+                children: [
+                  IndexedStack(
+                    index: _currentIndex,
+                    children: [
+                      Home(scrollController: _scrollController),
+                      const Categories(),
+                      const OrderView(),
+                      const SupportView(),
+                    ],
+                  ),
+                  const Positioned(
+                    bottom: 20,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: CartSummaryBar(),
+                    ),
+                  ),
+                ],
+              ),
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 15,
+                  offset: const Offset(0, -2))
+            ],
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (value) {
+              setState(() => _currentIndex = value);
+            },
+            selectedFontSize: 12,
+            unselectedFontSize: 12,
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w900),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+            items: [
+              BottomNavigationBarItem(
+                  icon: const Icon(FontAwesomeIcons.house, size: 18),
+                  label: AppLocalizations.of(context)!.home),
+              BottomNavigationBarItem(
+                  icon: const Icon(FontAwesomeIcons.list, size: 18),
+                  label: AppLocalizations.of(context)!.categories),
+              BottomNavigationBarItem(
+                  icon: const Icon(FontAwesomeIcons.bagShopping, size: 18),
+                  label: AppLocalizations.of(context)!.myOrders),
+              BottomNavigationBarItem(
+                  icon: const Icon(FontAwesomeIcons.headset, size: 18),
+                  label: AppLocalizations.of(context)!.support),
+            ],
+          ),
         ),
       ),
     );
@@ -85,137 +134,294 @@ class _MyHomePageState extends State<MyHomePage> with AutomaticKeepAliveClientMi
 
   Widget _buildModernDrawer(BuildContext context) {
     return Drawer(
-      backgroundColor: Colors.white,
-      width: MediaQuery.of(context).size.width * 0.85,
+      backgroundColor: const Color(0xFFFDFDFD),
+      width: MediaQuery.of(context).size.width * 0.80,
       child: Column(
         children: [
-          // Header Section with Gradient and Animated Logo
+          // Header Section
           Container(
-            height: 250,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Constants.baseColor, Constants.baseColor.withOpacity(0.85)],
-              ),
-              borderRadius: const BorderRadius.only(bottomRight: Radius.circular(60)),
-              boxShadow: const [
-                BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))
+            padding: EdgeInsets.zero,
+            height: 215,
+            child: Stack(
+              children: [
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Constants.baseColor,
+                        Constants.baseColor.withBlue(45).withGreen(100),
+                      ],
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      bottomRight: Radius.circular(45),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: -45,
+                  right: -45,
+                  child: Container(
+                    height: 180,
+                    width: 180,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.06),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const AnimatedDrawerLogo(size: 56),
+                        const SizedBox(height: 12),
+                        const Text(
+                          "हर किसान की पहचान !",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
-            child: SafeArea(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const AnimatedDrawerLogo(),
-                  const SizedBox(height: 15),
-                  Text(
-                    Constants.title,
-                    style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5),
-                  ),
-                  const Text(
-                    "Pure Organic Agriculture",
-                    style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-            ),
           ),
-          
+
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               children: [
-                _drawerItem(icon: Icons.home_rounded, title: "Home", isSelected: _currentIndex == 0, onTap: () => Navigator.pop(context)),
-                _drawerItem(icon: Icons.shopping_cart_rounded, title: "My Cart", onTap: () {
-                  Navigator.pop(context);
-                  Routers.goTO(context, toBody: const CartView());
-                }),
-                _drawerItem(icon: Icons.shopping_bag_rounded, title: "My Orders", onTap: () {
-                  Navigator.pop(context);
-                  setState(() => _currentIndex = 2);
-                }),
-                
+                _buildSectionHeader(AppLocalizations.of(context)!.menu),
+                _drawerItem(
+                    icon: Icons.home_outlined,
+                    activeIcon: Icons.home_rounded,
+                    title: AppLocalizations.of(context)!.home,
+                    isSelected: _currentIndex == 0,
+                    onTap: () => Navigator.pop(context)),
+                _drawerItem(
+                    icon: Icons.grid_view_outlined,
+                    activeIcon: Icons.grid_view_rounded,
+                    title: AppLocalizations.of(context)!.categories,
+                    isSelected: _currentIndex == 1,
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() => _currentIndex = 1);
+                    }),
+                _drawerItem(
+                    icon: Icons.shopping_bag_outlined,
+                    activeIcon: Icons.shopping_bag_rounded,
+                    title: AppLocalizations.of(context)!.myOrders,
+                    isSelected: _currentIndex == 2,
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() => _currentIndex = 2);
+                    }),
+                _drawerItem(
+                    icon: Icons.shopping_cart_outlined,
+                    activeIcon: Icons.shopping_cart_rounded,
+                    title: AppLocalizations.of(context)!.myCart,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Routers.goTO(context, toBody: const CartView());
+                    }),
                 const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 15),
-                  child: Divider(height: 1, color: Color(0xFFF0F0F0)),
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: Divider(height: 1, color: Color(0xFFF5F5F5)),
                 ),
-                
-                _drawerItem(icon: Icons.privacy_tip_rounded, title: "Privacy Policy", onTap: () {
-                  Navigator.pop(context);
-                  Routers.goTO(context, toBody: const PolicyPage(title: "Privacy Policy", content: PolicyContent.privacyPolicy));
-                }),
-                _drawerItem(icon: Icons.local_shipping_rounded, title: "Shipping Policy", onTap: () {
-                  Navigator.pop(context);
-                  Routers.goTO(context, toBody: const PolicyPage(title: "Shipping Policy", content: PolicyContent.shippingPolicy));
-                }),
-                _drawerItem(icon: Icons.assignment_return_rounded, title: "Return & Refund", onTap: () {
-                  Navigator.pop(context);
-                  Routers.goTO(context, toBody: const PolicyPage(title: "Return & Refund", content: PolicyContent.refundPolicy));
-                }),
-                _drawerItem(icon: Icons.gavel_rounded, title: "Terms & Conditions", onTap: () {
-                  Navigator.pop(context);
-                  Routers.goTO(context, toBody: const PolicyPage(title: "Terms & Conditions", content: PolicyContent.termsConditions));
-                }),
-                _drawerItem(icon: Icons.contact_support_rounded, title: "Contact Us", onTap: () {
-                  Navigator.pop(context);
-                  setState(() => _currentIndex = 3);
-                }),
+                _buildSectionHeader(AppLocalizations.of(context)!.support),
+                _drawerItem(
+                    icon: Icons.contact_support_outlined,
+                    activeIcon: Icons.contact_support_rounded,
+                    title: AppLocalizations.of(context)!.contactUs,
+                    isSelected: _currentIndex == 3,
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() => _currentIndex = 3);
+                    }),
+                _drawerItem(
+                    icon: Icons.privacy_tip_outlined,
+                    title: AppLocalizations.of(context)!.privacyPolicy,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Routers.goTO(context,
+                          toBody: PolicyPage(
+                              title:
+                                  AppLocalizations.of(context)!.privacyPolicy,
+                              content: PolicyContent.privacyPolicy));
+                    }),
+                _drawerItem(
+                    icon: Icons.local_shipping_outlined,
+                    title: AppLocalizations.of(context)!.shippingPolicy,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Routers.goTO(context,
+                          toBody: PolicyPage(
+                              title:
+                                  AppLocalizations.of(context)!.shippingPolicy,
+                              content: PolicyContent.shippingPolicy));
+                    }),
+                _drawerItem(
+                    icon: Icons.rule_rounded,
+                    title: AppLocalizations.of(context)!.termsConditions,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Routers.goTO(context,
+                          toBody: PolicyPage(
+                              title:
+                                  AppLocalizations.of(context)!.termsConditions,
+                              content: PolicyContent.termsConditions));
+                    }),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Text("App Version 2.0.3", style: TextStyle(color: Colors.grey[400], fontSize: 12, fontWeight: FontWeight.w900)),
+
+          // Bottom Version Info
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.02),
+              border: const Border(
+                top: BorderSide(color: Color(0xFFF5F5F5)),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "v3.0.0",
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      AppLocalizations.of(context)!.madeWithHeartForFarmers,
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+                Icon(
+                  Icons.eco_rounded,
+                  color: Constants.baseColor.withOpacity(0.2),
+                  size: 20,
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _drawerItem({required IconData icon, required String title, required VoidCallback onTap, bool isSelected = false}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        color: isSelected ? Constants.baseColor.withOpacity(0.1) : Colors.transparent,
-        borderRadius: BorderRadius.circular(15),
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 24, top: 10, bottom: 6),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: Colors.grey[400],
+          fontSize: 10.5,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.1,
+        ),
       ),
-      child: ListTile(
-        leading: Icon(icon, size: 22, color: isSelected ? Constants.baseColor : Colors.grey[700]),
-        title: Text(
-          title, 
-          style: TextStyle(
-            fontSize: 15, 
-            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-            color: isSelected ? Constants.baseColor : Colors.black87,
+    );
+  }
+
+  Widget _drawerItem({
+    required IconData icon,
+    IconData? activeIcon,
+    required String title,
+    required VoidCallback onTap,
+    bool isSelected = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? Constants.baseColor.withOpacity(0.08)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                isSelected ? (activeIcon ?? icon) : icon,
+                size: 22,
+                color: isSelected ? Constants.baseColor : Colors.grey[600],
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    color: isSelected ? Constants.baseColor : Colors.black87,
+                  ),
+                ),
+              ),
+              if (!isSelected)
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 11,
+                  color: Colors.grey[300],
+                ),
+            ],
           ),
         ),
-        onTap: onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        dense: true,
-        hoverColor: Constants.baseColor.withOpacity(0.05),
       ),
     );
   }
 }
 
 class AnimatedDrawerLogo extends StatefulWidget {
-  const AnimatedDrawerLogo({super.key});
+  final double size;
+  const AnimatedDrawerLogo({super.key, this.size = 60});
 
   @override
   State<AnimatedDrawerLogo> createState() => _AnimatedDrawerLogoState();
 }
 
-class _AnimatedDrawerLogoState extends State<AnimatedDrawerLogo> with SingleTickerProviderStateMixin {
+class _AnimatedDrawerLogoState extends State<AnimatedDrawerLogo>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
-    _scale = Tween<double>(begin: 1.0, end: 1.08).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 2))
+          ..repeat(reverse: true);
+    _scale = Tween<double>(begin: 1.0, end: 1.08)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -234,10 +440,14 @@ class _AnimatedDrawerLogoState extends State<AnimatedDrawerLogo> with SingleTick
           color: Colors.white,
           shape: BoxShape.circle,
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 15, offset: const Offset(0, 5))
+            BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 12,
+                offset: const Offset(0, 4))
           ],
         ),
-        child: Image.asset(Assets.assetsLogo, height: 60, width: 60),
+        child: Image.asset(Assets.assetsLogo,
+            height: widget.size, width: widget.size),
       ),
     );
   }

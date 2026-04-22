@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../controller/auth_controller.dart';
 import '../../controller/constants.dart';
+import 'package:kisan_sewa_kendra/l10n/app_localizations.dart';
 import '../home_view.dart';
 
 class OtpView extends StatefulWidget {
@@ -140,7 +141,7 @@ class _OtpViewState extends State<OtpView> with SingleTickerProviderStateMixin {
           _startResendTimer();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('OTP sent again!'),
+              content: Text(AppLocalizations.of(context)!.otpSentAgain),
               backgroundColor: Constants.baseColor,
               behavior: SnackBarBehavior.floating,
             ),
@@ -247,15 +248,15 @@ class _OtpViewState extends State<OtpView> with SingleTickerProviderStateMixin {
                   ),
                   const SizedBox(height: 24),
 
-                  const Text(
-                    'Verify your\nphone number',
-                    style: TextStyle(
+                  Text(
+                    AppLocalizations.of(context)!.verifyPhone,
+                    style: const TextStyle(
                         fontSize: 26, fontWeight: FontWeight.w800, height: 1.3),
                   ),
                   const SizedBox(height: 8),
                   Text.rich(
                     TextSpan(
-                      text: 'Enter the 6-digit code sent to ',
+                      text: AppLocalizations.of(context)!.enterOtpPrompt,
                       style:
                           TextStyle(fontSize: 15, color: Colors.grey.shade500),
                       children: [
@@ -296,8 +297,8 @@ class _OtpViewState extends State<OtpView> with SingleTickerProviderStateMixin {
                               height: 24,
                               child: CircularProgressIndicator(
                                   color: Colors.white, strokeWidth: 2.5))
-                          : const Text('Verify OTP',
-                              style: TextStyle(
+                          : Text(AppLocalizations.of(context)!.verifyOtp,
+                              style: const TextStyle(
                                   fontSize: 17, fontWeight: FontWeight.w700)),
                     ),
                   ),
@@ -308,7 +309,7 @@ class _OtpViewState extends State<OtpView> with SingleTickerProviderStateMixin {
                     child: _resendCountdown > 0
                         ? Text.rich(
                             TextSpan(
-                              text: 'Resend OTP in ',
+                              text: AppLocalizations.of(context)!.resendOtpIn,
                               style: TextStyle(
                                   color: Colors.grey.shade500, fontSize: 14),
                               children: [
@@ -332,7 +333,7 @@ class _OtpViewState extends State<OtpView> with SingleTickerProviderStateMixin {
                                         strokeWidth: 2,
                                         color: Constants.baseColor))
                                 : Text(
-                                    'Resend OTP',
+                                    AppLocalizations.of(context)!.resendOtp,
                                     style: TextStyle(
                                         color: Constants.baseColor,
                                         fontWeight: FontWeight.w700,

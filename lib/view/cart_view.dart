@@ -1,14 +1,22 @@
+import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:kisan_sewa_kendra/l10n/app_localizations.dart';
+import 'package:kisan_sewa_kendra/shopify/shopify.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 
-import '../components/ksk_appbar.dart';
 import '../components/network_image.dart';
 import '../controller/constants.dart';
 import '../controller/routers.dart';
-import 'checkout/address_view.dart';
-import 'home_view.dart';
 import '../controller/cart_controller.dart';
-import '../utils/meta_events.dart';
-import '../utils/firebase_events.dart';
+import '../controller/auth_controller.dart';
+import 'checkout/address_view.dart';
+import 'checkout/coupons_view.dart';
+import 'checkout/order_success_view.dart';
+import 'home_view.dart';
 
 class CartView extends StatefulWidget {
   const CartView({super.key});
@@ -18,6 +26,10 @@ class CartView extends StatefulWidget {
 }
 
 class _CartViewState extends State<CartView> {
+  Map<String, dynamic>? _selectedAddress;
+  Map<String, dynamic>? _appliedDiscount;
+  bool _isProcessingOrder = false;
+  late Razorpay _razorpay;
   List<CartItem> _cartItems = [];
   bool _isLoading = true;
 
@@ -25,14 +37,40 @@ class _CartViewState extends State<CartView> {
   void initState() {
     super.initState();
     _init();
+    _loadDefaultAddress();
+    _initRazorpay();
+  }
+
+  void _initRazorpay() {
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+  }
+
+  Future<void> _loadDefaultAddress() async {
+    final addresses = await AuthController.getStoredAddresses();
+    if (mounted) {
+      setState(() {
+        if (addresses.isNotEmpty) {
+          _selectedAddress = addresses.first;
+        } else {
+          _selectedAddress = null;
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _razorpay.clear();
+    super.dispose();
   }
 
   Future<void> _init() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
-
     final items = await CartController.getCart();
-
     if (mounted) {
       setState(() {
         _cartItems = items;
@@ -45,252 +83,1367 @@ class _CartViewState extends State<CartView> {
     int index = _cartItems.indexWhere((item) => item.id == id);
     if (index >= 0) {
       int newQty = _cartItems[index].qty + delta;
-      await CartController.updateQty(id, newQty);
+      if (newQty <= 0) {
+        await CartController.updateQty(id, 0);
+      } else {
+        await CartController.updateQty(id, newQty);
+      }
       await _init();
+    }
+  }
+
+  Future<void> _clearCart() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          AppLocalizations.of(context)!.clearCartConfirm,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w900),
+        ),
+        content: Text(
+          AppLocalizations.of(context)!.clearCartConfirmMsg,
+          style: GoogleFonts.inter(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              AppLocalizations.of(context)!.cancel,
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w700,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              AppLocalizations.of(context)!.clearCart.toUpperCase(),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w900,
+                color: Colors.redAccent,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await CartController.clearCart();
+      HapticFeedback.heavyImpact();
+      _init();
     }
   }
 
   double _getTotalValue() {
     double total = 0;
     for (var item in _cartItems) {
-      double price = double.tryParse(
-          item.price.replaceAll(RegExp(r'[^\d.]'), '')) ??
-          0;
+      double price =
+          double.tryParse(item.price.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
       total += price * item.qty;
     }
     return total;
   }
 
-  String _getTotalAmt() {
-    return "${Constants.inr}${_getTotalValue().toStringAsFixed(2)}";
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: const KskAppbar(title: "My Cart"),
-      body: RefreshIndicator(
-        onRefresh: _init,
-        color: Constants.baseColor,
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _cartItems.isEmpty
-            ? _buildEmptyState()
-            : _buildCartList(),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
-      bottomNavigationBar:
-      _isLoading || _cartItems.isEmpty ? null : _buildCheckoutBar(),
+      child: Scaffold(
+        backgroundColor: const Color(0xffF9FBF9),
+        body: Stack(
+          children: [
+            // Background Layer
+            Positioned.fill(
+              child: Container(color: const Color(0xffF9FBF9)),
+            ),
+
+            // Background Shapes
+            Positioned(
+              top: -50,
+              right: -30,
+              child: Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  color: Constants.baseColor.withOpacity(0.04),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 150,
+              left: -40,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: Constants.baseColor.withOpacity(0.03),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _cartItems.isEmpty
+                    ? _buildEmptyState()
+                    : SingleChildScrollView(
+                        padding: EdgeInsets.fromLTRB(16,
+                            MediaQuery.of(context).padding.top + 85, 16, 40),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSectionHeader(
+                                AppLocalizations.of(context)!.farmingEssentials,
+                                AppLocalizations.of(context)!
+                                    .items(_cartItems.length)),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4, bottom: 8),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.swipe_left_rounded,
+                                      size: 16,
+                                      color:
+                                          Constants.baseColor.withOpacity(0.4)),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    AppLocalizations.of(context)!.slideToDelete,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[500],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            _buildCartList(),
+                            const SizedBox(height: 10),
+                            _buildCouponSection(),
+                            const SizedBox(height: 10),
+                            _buildAddressSection(),
+                            const SizedBox(height: 10),
+                            _buildBillSummary(),
+                            _buildSafetyBadge(),
+                            const SizedBox(height: 80),
+                          ],
+                        ),
+                      ),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: _buildAdvancedHeader(),
+            ),
+          ],
+        ),
+        bottomNavigationBar: _isLoading || _cartItems.isEmpty
+            ? null
+            : _buildIntegratedCheckoutBar(),
+      ),
     );
   }
 
-  Widget _buildEmptyState() {
-    return ListView(
+  Widget _buildSectionHeader(String title, String sub) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-        Center(
-          child: Column(
-            children: [
-              Icon(Icons.remove_shopping_cart_outlined,
-                  size: 100,
-                  color: Constants.baseColor.withOpacity(0.2)),
-              const SizedBox(height: 20),
-              const Text("Your Cart is Empty",
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey)),
-              const SizedBox(height: 25),
-              SizedBox(
-                width: 200,
-                height: 45,
-                child: FilledButton(
-                  onPressed: () =>
-                      Routers.goNoBack(context, toBody: const MyHomePage()),
-                  style: FilledButton.styleFrom(
-                      backgroundColor: Constants.baseColor),
-                  child: const Text("CONTINUE SHOPPING"),
-                ),
-              )
-            ],
+        Text(
+          title,
+          style: GoogleFonts.outfit(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF1E1E1E),
+          ),
+        ),
+        Text(
+          sub,
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[400],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildCartList() {
-    return ListView.separated(
-      padding: const EdgeInsets.all(15),
-      itemCount: _cartItems.length,
-      separatorBuilder: (context, index) =>
-      const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final item = _cartItems[index];
-        return Container(
+  Widget _buildAdvancedHeader() {
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(
+              16, MediaQuery.of(context).padding.top + 8, 16, 12),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(15),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4))
-            ],
-            border: Border.all(color: Colors.grey[100]!),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: KskNetworkImage(item.image,
-                      height: 80,
-                      width: 80,
-                      fit: BoxFit.contain),
-                ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                    children: [
-                      Text(item.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14)),
-                      const SizedBox(height: 4),
-                      Text("Variant: ${item.variantTitle}",
-                          style: const TextStyle(
-                              color: Colors.grey, fontSize: 12)),
-                      const SizedBox(height: 8),
-                      Text("${Constants.inr}${item.price}",
-                          style: TextStyle(
-                              color: Constants.baseColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16)),
-                    ],
-                  ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(10)),
-                  child: Column(
-                    children: [
-                      IconButton(
-                          onPressed: () =>
-                              _updateQty(item.id, 1),
-                          icon: const Icon(Icons.add,
-                              size: 18),
-                          padding: EdgeInsets.zero,
-                          constraints:
-                          const BoxConstraints()),
-                      Text("${item.qty}",
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16)),
-                      IconButton(
-                          onPressed: () =>
-                              _updateQty(item.id, -1),
-                          icon: const Icon(Icons.remove,
-                              size: 18),
-                          padding: EdgeInsets.zero,
-                          constraints:
-                          const BoxConstraints()),
-                    ],
-                  ),
-                ),
-              ],
+            color: Colors.white.withOpacity(0.85),
+            border: Border(
+              bottom: BorderSide(color: Colors.grey.withOpacity(0.05)),
             ),
           ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  _circleIconBtn(
+                    icon: Icons.arrow_back_rounded,
+                    onTap: () => Navigator.pop(context),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppLocalizations.of(context)!.checkout,
+                          style: GoogleFonts.outfit(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: Constants.baseColor,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        Text(
+                          "${AppLocalizations.of(context)!.appBrandName} • Agri-Business",
+                          style: GoogleFonts.inter(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: Constants.baseColor,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_cartItems.isNotEmpty)
+                    TextButton(
+                      onPressed: _clearCart,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        AppLocalizations.of(context)!.clearCart.toUpperCase(),
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _buildProgressSteps(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _circleIconBtn({required IconData icon, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.grey.withOpacity(0.05),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, size: 20, color: const Color(0xFF1E1E1E)),
+      ),
+    );
+  }
+
+  Widget _buildProgressSteps() {
+    return Row(
+      children: [
+        _stepItem(AppLocalizations.of(context)!.cart, true),
+        _stepDivider(true),
+        _stepItem(
+            AppLocalizations.of(context)!.address, _selectedAddress != null),
+        _stepDivider(_selectedAddress != null),
+        _stepItem(AppLocalizations.of(context)!.payment, false),
+      ],
+    );
+  }
+
+  Widget _stepDivider(bool active) {
+    return Expanded(
+      child: Container(
+        height: 1.5,
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        decoration: BoxDecoration(
+          color: active ? Constants.baseColor : Colors.grey[200],
+          borderRadius: BorderRadius.circular(1),
+        ),
+      ),
+    );
+  }
+
+  Widget _stepItem(String label, bool active) {
+    return Column(
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: active ? Constants.baseColor : Colors.grey[300],
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 7,
+            fontWeight: FontWeight.w900,
+            color: active ? Constants.baseColor : Colors.grey[400],
+            letterSpacing: 0.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(30),
+              decoration: BoxDecoration(
+                color: Constants.baseColor.withOpacity(0.05),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.shopping_basket_outlined,
+                  size: 80, color: Constants.baseColor.withOpacity(0.2)),
+            ),
+            const SizedBox(height: 32),
+            Text(AppLocalizations.of(context)!.basketEmpty,
+                style: GoogleFonts.outfit(
+                    fontSize: 24, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 12),
+            Text(AppLocalizations.of(context)!.basketEmptyMsg,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                    fontSize: 14, color: Colors.grey[500], height: 1.5)),
+            const SizedBox(height: 40),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Constants.baseColor,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                ),
+                child: Text(AppLocalizations.of(context)!.startShopping,
+                    style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 1)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCartList() {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      itemCount: _cartItems.length,
+      itemBuilder: (context, index) {
+        final item = _cartItems[index];
+        return Dismissible(
+          key: Key(item.id),
+          direction: DismissDirection.endToStart,
+          onDismissed: (_) {
+            _updateQty(item.id, -item.qty);
+            HapticFeedback.mediumImpact();
+          },
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: Colors.redAccent.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(Icons.delete_sweep_rounded,
+                color: Colors.white, size: 28),
+          ),
+          child: _buildCartItem(item),
         );
       },
     );
   }
 
-  Widget _buildCheckoutBar() {
+  Widget _buildCartItem(CartItem item) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 15, 20, 30),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -5))
-        ],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withOpacity(0.05)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment:
-            MainAxisAlignment.spaceBetween,
-            children: [
-              const Text("Total Amount",
-                  style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 15)),
-              Text(_getTotalAmt(),
-                  style: TextStyle(
-                      color: Constants.baseColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 22)),
-            ],
+          Container(
+            width: 75,
+            height: 75,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: const Color(0xFFF9FBF9),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: KskNetworkImage(item.image, fit: BoxFit.cover),
+            ),
           ),
-          const SizedBox(height: 15),
-
-          SizedBox(
-            width: double.infinity,
-            height: 55,
-            child: FilledButton(
-                onPressed: () {
-                double totalVal = _getTotalValue();
-
-                String ids = _cartItems.map((e) => e.id.split('/').last).join(',');
-
-                // Meta Event: Initiate Checkout
-                MetaEvents.initiateCheckout(totalValue: totalVal, contentIds: ids);
-
-                // Firebase Event: begin_checkout
-                FirebaseEvents.beginCheckout(totalVal);
-
-                final cartData = _cartItems.map((e) {
-                  final variantId = int.tryParse(e.id.split('/').last) ?? 0;
-                  final productId = int.tryParse(e.productId?.split('/').last ?? '') ?? 0;
-                  return {
-                    "id": variantId,
-                    "quantity": e.qty,
-                    "variant_id": variantId,
-                    "product_id": productId,
-                    "title": e.title,
-                    "price": double.tryParse(e.price.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0,
-                    "image": e.image
-                  };
-                }).toList();
-
-                Routers.goTO(context, toBody: AddressView(cartItems: cartData, totalValue: totalVal));
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: Constants.baseColor,
-                shape: RoundedRectangleBorder(
-                    borderRadius:
-                    BorderRadius.circular(15)),
-              ),
-              child: const Text(
-                "PROCEED TO SECURE CHECKOUT",
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1),
-              ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: const Color(0xFF1E1E1E),
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => _updateQty(item.id, -item.qty),
+                      icon: const Icon(Icons.delete_outline_rounded,
+                          size: 18, color: Colors.redAccent),
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                Text(
+                  item.variantTitle == "Default Title"
+                      ? AppLocalizations.of(context)!.pureOrganicQuality
+                      : item.variantTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    height: 1.2,
+                    color: Constants.baseColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "${Constants.inr}${item.price}",
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                        color: const Color(0xFF1E1E1E),
+                      ),
+                    ),
+                    _buildQtySelector(item),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildQtySelector(CartItem item) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+      decoration: BoxDecoration(
+        color: Constants.baseColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _qtyBtn(Icons.remove_rounded, () => _updateQty(item.id, -1)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              "${item.qty}",
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.w900,
+                fontSize: 13,
+                color: Constants.baseColor,
+              ),
+            ),
+          ),
+          _qtyBtn(Icons.add_rounded, () => _updateQty(item.id, 1)),
+        ],
+      ),
+    );
+  }
+
+  Widget _qtyBtn(IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(icon, size: 16, color: Constants.baseColor),
+      ),
+    );
+  }
+
+  void _selectCoupon() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const CouponsView()),
+    );
+    if (result != null) setState(() => _appliedDiscount = result);
+  }
+
+  Widget _buildCouponSection() {
+    return InkWell(
+      onTap: _selectCoupon,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+              color: _appliedDiscount != null
+                  ? Constants.baseColor.withOpacity(0.1)
+                  : Colors.grey.withOpacity(0.05)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _appliedDiscount != null
+                    ? Constants.baseColor
+                    : Constants.baseColor.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.confirmation_num_rounded,
+                color: _appliedDiscount != null
+                    ? Colors.white
+                    : Constants.baseColor,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _appliedDiscount == null
+                        ? AppLocalizations.of(context)!.haveCoupon
+                        : AppLocalizations.of(context)!.couponApplied,
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      color: const Color(0xFF1E1E1E),
+                    ),
+                  ),
+                  Text(
+                    _appliedDiscount == null
+                        ? AppLocalizations.of(context)!.saveMoreMsg
+                        : AppLocalizations.of(context)!
+                            .couponAppliedMsg(_appliedDiscount!['code']),
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                      color: _appliedDiscount != null
+                          ? Constants.baseColor
+                          : Colors.grey[400],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_appliedDiscount != null)
+              GestureDetector(
+                onTap: () => setState(() => _appliedDiscount = null),
+                child: const Icon(Icons.close_rounded,
+                    size: 16, color: Colors.red),
+              )
+            else
+              Icon(Icons.chevron_right_rounded,
+                  color: Colors.grey[300], size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBillSummary() {
+    double subtotal = _getTotalValue();
+    double discount = _appliedDiscount != null
+        ? (double.tryParse(_appliedDiscount!['value']?.toString() ?? '0') ?? 0)
+        : 0;
+    if (_appliedDiscount != null &&
+        _appliedDiscount!['value_type'] == 'percentage') {
+      discount = (subtotal * discount) / 100;
+    }
+    double total = subtotal - discount;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.withOpacity(0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            AppLocalizations.of(context)!.billSummary,
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              color: const Color(0xFF1E1E1E),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _summaryRow(AppLocalizations.of(context)!.itemTotal, subtotal),
+          if (_appliedDiscount != null)
+            _summaryRow(AppLocalizations.of(context)!.couponDiscount, -discount,
+                isGreen: true),
+          _summaryRow(AppLocalizations.of(context)!.deliveryFee, 0,
+              isFree: true),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Divider(height: 1),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(AppLocalizations.of(context)!.grandTotal,
+                  style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.w800, fontSize: 16)),
+              Text("${Constants.inr}${total.toStringAsFixed(2)}",
+                  style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 20,
+                      color: Constants.baseColor)),
+            ],
+          ),
+          if (discount > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+              decoration: BoxDecoration(
+                color: Constants.baseColor.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.stars_rounded,
+                      color: Constants.baseColor, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    AppLocalizations.of(context)!.youSaved(
+                        "${Constants.inr}${discount.toStringAsFixed(0)}"),
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Constants.baseColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryRow(String label, double val,
+      {bool isFree = false, bool isGreen = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: Colors.grey[500],
+                  fontWeight: FontWeight.w600)),
+          Text(
+              isFree
+                  ? "FREE"
+                  : "${val < 0 ? '-' : ''}${Constants.inr}${val.abs().toStringAsFixed(2)}",
+              style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  color: isGreen || isFree
+                      ? Constants.baseColor
+                      : const Color(0xFF1E1E1E))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddressSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.withOpacity(0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Constants.baseColor.withOpacity(0.05),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.location_on_rounded,
+                    color: Constants.baseColor, size: 16),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(AppLocalizations.of(context)!.deliveryAddress,
+                        style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w800, fontSize: 15)),
+                    if (_selectedAddress != null)
+                      Text(
+                          AppLocalizations.of(context)!.deliveringTo(
+                              _selectedAddress!['label'] ?? "Home"),
+                          style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
+                              color: Constants.baseColor)),
+                  ],
+                ),
+              ),
+              TextButton(
+                  onPressed: _selectAddress,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(AppLocalizations.of(context)!.change,
+                      style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 11,
+                          color: Constants.baseColor))),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_selectedAddress != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FBF9),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(_selectedAddress!['name'] ?? '',
+                          style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w800, fontSize: 13)),
+                      const SizedBox(width: 4),
+                      Text("•", style: TextStyle(color: Colors.grey[300])),
+                      const SizedBox(width: 4),
+                      Text("${_selectedAddress!['phone'] ?? ''}",
+                          style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                              color: Colors.grey[500])),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "${_selectedAddress!['address1']}, ${_selectedAddress!['address2']}, ${_selectedAddress!['city']}, ${_selectedAddress!['state']} - ${_selectedAddress!['pincode']}",
+                    style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: Colors.grey[500],
+                        height: 1.4,
+                        fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+          ] else
+            _buildEmptyAddressBtn(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyAddressBtn() {
+    return InkWell(
+      onTap: _selectAddress,
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.02),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+              color: Colors.red.withOpacity(0.1), style: BorderStyle.solid),
+        ),
+        child: Column(
+          children: [
+            Icon(Icons.add_location_alt_rounded,
+                color: Colors.red[300], size: 30),
+            const SizedBox(height: 12),
+            Text(AppLocalizations.of(context)!.selectAddressToProceed,
+                style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.red[400])),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _selectAddress() async {
+    final result = await Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const AddressView()));
+    if (result != null) {
+      setState(() => _selectedAddress = result);
+    } else {
+      _loadDefaultAddress();
+    }
+  }
+
+  Widget _buildSafetyBadge() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.verified_user_rounded,
+                  color: Colors.grey[300], size: 14),
+              const SizedBox(width: 8),
+              Text(AppLocalizations.of(context)!.secureTransactions,
+                  style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.grey[400],
+                      letterSpacing: 1.5)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(AppLocalizations.of(context)!.trustBadges,
+              style: GoogleFonts.inter(
+                  fontSize: 8,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.grey[300],
+                  letterSpacing: 2)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIntegratedCheckoutBar() {
+    double subtotal = _getTotalValue();
+    double discount = _appliedDiscount != null
+        ? (double.tryParse(_appliedDiscount!['value']?.toString() ?? '0') ?? 0)
+        : 0;
+    if (_appliedDiscount != null &&
+        _appliedDiscount!['value_type'] == 'percentage') {
+      discount = (subtotal * discount) / 100;
+    }
+    double finalTotal = subtotal - discount;
+
+    return Container(
+        padding: EdgeInsets.fromLTRB(
+            20, 12, 20, MediaQuery.of(context).padding.bottom + 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 20,
+                offset: const Offset(0, -5))
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: _isProcessingOrder
+                    ? null
+                    : (_selectedAddress == null
+                        ? _selectAddress
+                        : _showPaymentSelector),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: _selectedAddress == null
+                        ? Colors.black
+                        : Constants.baseColor,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                          color: (_selectedAddress == null
+                                  ? Colors.black
+                                  : Constants.baseColor)
+                              .withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4))
+                    ],
+                  ),
+                  child: Center(
+                    child: _isProcessingOrder
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2))
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                  _selectedAddress == null
+                                      ? AppLocalizations.of(context)!
+                                          .addDeliveryAddress
+                                      : AppLocalizations.of(context)!
+                                          .proceedToPlaceOrder,
+                                  style: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                      letterSpacing: 1)),
+                              const SizedBox(width: 12),
+                              const Icon(Icons.arrow_forward_rounded,
+                                  color: Colors.white, size: 20),
+                            ],
+                          ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ));
+  }
+
+  void _showPaymentSelector() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: EdgeInsets.fromLTRB(
+            20, 10, 20, MediaQuery.of(context).padding.bottom + 16),
+        decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(color: Colors.black12, blurRadius: 15, spreadRadius: 2)
+            ]),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 32,
+              height: 3,
+              decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(AppLocalizations.of(context)!.paymentOptions,
+                          style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w900, fontSize: 18)),
+                      Text(AppLocalizations.of(context)!.choosePreferredMethod,
+                          style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: Colors.grey[400],
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close_rounded,
+                        size: 16, color: Colors.grey),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _paymentOption(
+                Icons.account_balance_wallet_rounded,
+                AppLocalizations.of(context)!.onlinePayment,
+                AppLocalizations.of(context)!.payMethodSubtitle,
+                Constants.baseColor,
+                discount: _appliedDiscount == null
+                    ? "₹${Constants.payOnlineDiscountAmount.toInt()} OFF"
+                    : null, () {
+              Navigator.pop(context);
+              _payOnline();
+            }),
+            const SizedBox(height: 8),
+            _paymentOption(
+                Icons.currency_rupee_rounded,
+                AppLocalizations.of(context)!.cod,
+                AppLocalizations.of(context)!.codSubtitle,
+                const Color(0xFF4A4A4A), () {
+              Navigator.pop(context);
+              _createShopifyOrder(isCod: true);
+            }),
+            if (_appliedDiscount != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFDE7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFFF59D)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_rounded,
+                        color: Colors.amber[900], size: 14),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        AppLocalizations.of(context)!
+                            .couponActiveOnlineDisabled,
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.amber[900],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _paymentOption(
+      IconData icon, String title, String sub, Color color, VoidCallback onTap,
+      {String? discount}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Colors.grey.withOpacity(0.08)),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.01),
+                blurRadius: 5,
+                offset: const Offset(0, 2),
+              )
+            ]),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(title,
+                          style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w800, fontSize: 14)),
+                      if (discount != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF43A047), Color(0xFF66BB6A)],
+                            ),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            discount,
+                            style: GoogleFonts.inter(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  Text(sub,
+                      style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: Colors.grey[500],
+                          fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                color: Colors.grey[300], size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    _createShopifyOrder(paymentId: response.paymentId);
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    setState(() => _isProcessingOrder = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Payment Failed: ${response.message}")));
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {}
+
+  void _payOnline() async {
+    double subtotal = _getTotalValue();
+    double discount = 0;
+    if (_appliedDiscount != null) {
+      discount =
+          (double.tryParse(_appliedDiscount!['value']?.toString() ?? '0') ?? 0);
+      if (_appliedDiscount!['value_type'] == 'percentage') {
+        discount = (subtotal * discount) / 100;
+      }
+    }
+
+    double finalTotal = subtotal - discount;
+    if (_appliedDiscount == null) {
+      finalTotal -= Constants.payOnlineDiscountAmount;
+    }
+
+    // Prioritize phone from selected address, fallback to login phone
+    String? contactPhone = _selectedAddress?['phone']?.toString();
+    if (contactPhone == null || contactPhone.isEmpty) {
+      contactPhone = await AuthController.getSavedPhone();
+    }
+
+    // More robust phone cleaning for Razorpay prefill
+    if (contactPhone != null && contactPhone.isNotEmpty) {
+      contactPhone = contactPhone.replaceAll(RegExp(r'[^\d]'), '');
+
+      // Remove leading '0' if present
+      if (contactPhone.startsWith('0')) {
+        contactPhone = contactPhone.substring(1);
+      }
+
+      // Remove '91' prefix if it's already there and the rest is 10 digits
+      if (contactPhone.startsWith('91') && contactPhone.length > 10) {
+        contactPhone = contactPhone.substring(2);
+      }
+
+      // Force digits-only format: 91XXXXXXXXXX (no +)
+      if (contactPhone.length == 10) {
+        contactPhone = "91$contactPhone";
+      } else {
+        contactPhone = contactPhone.replaceAll('+', '');
+      }
+    }
+
+    String? contactName = _selectedAddress?['name']?.toString() ??
+        await AuthController.getSavedName();
+    if (contactName == null || contactName.isEmpty) contactName = "Customer";
+
+    String? contactEmail = await AuthController.getSavedEmail();
+    if (contactEmail == null || contactEmail.isEmpty) {
+      // Razorpay requires an email to skip the contact screen.
+      contactEmail = "customer@kisansewakendra.com";
+    }
+
+    var options = {
+      'key': Constants.razorpayKey,
+      'amount': (finalTotal * 100).toInt(), // amount in paise
+      'name': Constants.title,
+      'image':
+          'https://cdn.shopify.com/s/files/1/0627/9204/0601/files/logo.png',
+      'description': 'Payment for Order',
+      'prefill': {
+        'contact': contactPhone ?? '', // Standard key
+        'phone': contactPhone ?? '', // Alias for some SDK versions
+        'name': contactName,
+        'email': contactEmail,
+      },
+      'modal': {
+        'confirm_close': true,
+      }
+    };
+
+    print("DEBUG: Razorpay Options --> $options");
+    debugPrint("DEBUG: Razorpay Options --> $options");
+
+    try {
+      _razorpay.open(options);
+    } catch (e) {
+      debugPrint("Razorpay Error: $e");
+    }
+  }
+
+  Future<void> _createShopifyOrder(
+      {String? paymentId, bool isCod = false}) async {
+    setState(() => _isProcessingOrder = true);
+
+    // Calculate final total for the success screen
+    double subtotal = _getTotalValue();
+    double discount = _appliedDiscount != null
+        ? (double.tryParse(_appliedDiscount!['value']?.toString() ?? '0') ?? 0)
+        : 0;
+    if (_appliedDiscount != null &&
+        _appliedDiscount!['value_type'] == 'percentage') {
+      discount = (subtotal * discount) / 100;
+    }
+    double finalTotal = subtotal - discount;
+
+    // Prepare line items
+    final List<Map<String, dynamic>> items = _cartItems
+        .map((item) => {
+              "variant_id": item.id,
+              "quantity": item.qty,
+            })
+        .toList();
+
+    final String? customerId = await AuthController.getShopifyCustomerId();
+    if (customerId == null) {
+      if (mounted) {
+        setState(() => _isProcessingOrder = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Error: Customer ID not found")));
+      }
+      return;
+    }
+
+    final orderRes = await ShopifyAPI.createOrder(
+      customerId: customerId,
+      lineItems: items,
+      shippingAddress: _selectedAddress!,
+      totalAmount: finalTotal,
+      paymentId: paymentId,
+      isCod: isCod,
+    );
+
+    if (orderRes.isNotEmpty && orderRes['order'] != null) {
+      String realOrderNumber = orderRes['order']['name']?.toString() ??
+          "KSK-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}";
+
+      // Final cleanup
+      await CartController.clearCart();
+      if (mounted) {
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (_) => OrderSuccessView(
+                      orderNumber: realOrderNumber,
+                      totalAmount: finalTotal,
+                      paymentId:
+                          paymentId ?? (isCod ? "Cash on Delivery" : "Online"),
+                    )));
+      }
+    } else {
+      if (mounted) {
+        setState(() => _isProcessingOrder = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Failed to create order. Please try again.")));
+      }
+    }
   }
 }

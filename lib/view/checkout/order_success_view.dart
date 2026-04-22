@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../home_view.dart';
+import 'package:kisan_sewa_kendra/l10n/app_localizations.dart';
 import '../../controller/constants.dart';
 
 class OrderSuccessView extends StatefulWidget {
@@ -85,9 +86,9 @@ class _OrderSuccessViewState extends State<OrderSuccessView>
                 ),
                 const SizedBox(height: 32),
 
-                const Text(
-                  'Order Placed!',
-                  style: TextStyle(
+                Text(
+                  AppLocalizations.of(context)!.orderPlaced,
+                  style: const TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF1a1a1a),
@@ -95,7 +96,7 @@ class _OrderSuccessViewState extends State<OrderSuccessView>
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Thank you for shopping with ${Constants.title}. Your order has been confirmed.',
+                  AppLocalizations.of(context)!.orderSuccessMsg(AppLocalizations.of(context)!.appBrandName),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 15,
@@ -113,20 +114,33 @@ class _OrderSuccessViewState extends State<OrderSuccessView>
                   decoration: BoxDecoration(
                     color: Constants.baseColor.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Constants.baseColor.withOpacity(0.15)),
+                    border: Border.all(
+                        color: Constants.baseColor.withOpacity(0.15)),
                   ),
                   child: Column(
                     children: [
-                      _buildDetailRow('Order Number', widget.orderNumber),
+                      _buildDetailRow(AppLocalizations.of(context)!.orderNumber, widget.orderNumber),
                       const SizedBox(height: 14),
                       _buildDetailRow(
-                        'Amount Paid',
+                        widget.paymentId == "Cash on Delivery"
+                            ? AppLocalizations.of(context)!.amountPending
+                            : AppLocalizations.of(context)!.amountPaid,
                         '₹${widget.totalAmount.toStringAsFixed(2)}',
                         isHighlight: true,
                       ),
-                      if (widget.paymentId.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      _buildDetailRow(
+                        AppLocalizations.of(context)!.paymentMethod,
+                        widget.paymentId == "Cash on Delivery"
+                            ? AppLocalizations.of(context)!.cod
+                            : AppLocalizations.of(context)!.onlinePayment,
+                        isSmall: true,
+                      ),
+                      if (widget.paymentId != "Cash on Delivery" &&
+                          widget.paymentId != "Online") ...[
                         const SizedBox(height: 14),
-                        _buildDetailRow('Payment ID', widget.paymentId, isSmall: true),
+                        _buildDetailRow(AppLocalizations.of(context)!.paymentId, widget.paymentId,
+                            isSmall: true),
                       ],
                     ],
                   ),
@@ -138,11 +152,13 @@ class _OrderSuccessViewState extends State<OrderSuccessView>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.local_shipping_rounded, color: Constants.baseColor, size: 18),
+                    Icon(Icons.local_shipping_rounded,
+                        color: Constants.baseColor, size: 18),
                     const SizedBox(width: 8),
                     Text(
-                      'You will receive a confirmation email shortly',
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                      AppLocalizations.of(context)!.confirmationEmailMsg,
+                      style:
+                          TextStyle(fontSize: 13, color: Colors.grey.shade500),
                     ),
                   ],
                 ),
@@ -169,9 +185,10 @@ class _OrderSuccessViewState extends State<OrderSuccessView>
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    child: const Text(
-                      'Continue Shopping',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                    child: Text(
+                      AppLocalizations.of(context)!.continueShopping,
+                      style:
+                          const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -184,13 +201,15 @@ class _OrderSuccessViewState extends State<OrderSuccessView>
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {bool isHighlight = false, bool isSmall = false}) {
+  Widget _buildDetailRow(String label, String value,
+      {bool isHighlight = false, bool isSmall = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: isSmall ? 12 : 14, color: Colors.grey.shade600),
+          style: TextStyle(
+              fontSize: isSmall ? 12 : 14, color: Colors.grey.shade600),
         ),
         Flexible(
           child: Text(
@@ -199,7 +218,8 @@ class _OrderSuccessViewState extends State<OrderSuccessView>
             style: TextStyle(
               fontSize: isSmall ? 12 : 14,
               fontWeight: FontWeight.w700,
-              color: isHighlight ? Constants.baseColor : const Color(0xFF1a1a1a),
+              color:
+                  isHighlight ? Constants.baseColor : const Color(0xFF1a1a1a),
             ),
           ),
         ),
